@@ -28,7 +28,7 @@ COPY . .
 RUN apt-get purge -y --auto-remove gcc libc-dev
 
 # ポートの公開
-EXPOSE 8080
+EXPOSE 8000
 
 # アプリケーションの実行
 CMD ["python", "-m", "why_why_chat_ai.api"]

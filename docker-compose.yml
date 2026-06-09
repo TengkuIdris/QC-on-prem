@@ -148,6 +148,12 @@ services:
       - SECURITY_API_KEYS=["${AI_SERVICE_API_KEY}"]
     ports:
       - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
     depends_on:
       postgres:
         condition: service_healthy
@@ -199,7 +205,7 @@ services:
       minio:
         condition: service_healthy
       api:
-        condition: service_started
+        condition: service_healthy
 
   frontend:
     # React UI (served by nginx). The 「参考事例」 panel reads

@@ -428,29 +428,41 @@ class AgentClient:
         """
         エージェントとトレースなどの設定をセットアップする
         """
-        # trace
-        credentials, _ = google.auth.default()
-        span_exporter = CloudTraceSpanExporter(
-            project_id=settings.gcp_project_id,
-            client=TraceServiceClient(credentials=credentials.with_quota_project(settings.gcp_project_id)),
-        )
-        span_processor: SpanProcessor = SimpleSpanProcessor(span_exporter=span_exporter)
-        tracer_provider: TracerProvider = get_tracer_provider()
-        # Get the appropriate tracer provider
-        if is_noop_or_proxy_tracer_provider(tracer_provider):
-            tracer_provider = TracerProvider()
-            set_tracer_provider(tracer_provider)
-        # Avoids OpenTelemetry client already exists error.
-        _override_active_span_processor(tracer_provider, SynchronousMultiSpanProcessor())
-        tracer_provider.add_span_processor(span_processor)
-        # Keep the instrumentation up-to-date.
-        self._instrumentor = LangChainInstrumentor()
-        if self._instrumentor.is_instrumented_by_opentelemetry:
-            self._instrumentor.uninstrument()
-        self._instrumentor.instrument()
+        # GCP Cloud Trace is only set up when USE_CLOUD_SQL=true (i.e. running on
+        # GCP).  On-prem containers have no Application Default Credentials, so
+        # google.auth.default() and CloudTraceSpanExporter would crash immediately.
+        if settings.use_cloud_sql:
+            try:
+                credentials, _ = google.auth.default()
+                span_exporter = CloudTraceSpanExporter(
+                    project_id=settings.gcp_project_id,
+                    client=TraceServiceClient(credentials=credentials.with_quota_project(settings.gcp_project_id)),
+                )
+                span_processor: SpanProcessor = SimpleSpanProcessor(span_exporter=span_exporter)
+                tracer_provider: TracerProvider = get_tracer_provider()
+                if is_noop_or_proxy_tracer_provider(tracer_provider):
+                    tracer_provider = TracerProvider()
+                    set_tracer_provider(tracer_provider)
+                _override_active_span_processor(tracer_provider, SynchronousMultiSpanProcessor())
+                tracer_provider.add_span_processor(span_processor)
+                self._instrumentor = LangChainInstrumentor()
+                if self._instrumentor.is_instrumented_by_opentelemetry:
+                    self._instrumentor.uninstrument()
+                self._instrumentor.instrument()
+                logger.info("GCP Cloud Trace instrumentation enabled")
+            except Exception as e:
+                logger.warning(f"GCP Cloud Trace setup failed, continuing without tracing: {e}")
+        else:
+            logger.info("USE_CLOUD_SQL=false — skipping GCP Cloud Trace setup (on-prem mode)")
 
-        # agent
-        checkpointer = await self._build_checkpointer_hybrid()
+        # For on-prem (USE_CLOUD_SQL=false) use the shared build_checkpointer()
+        # helper which routes to a standard TCP PostgreSQL connection via
+        # DATABASE_URL.  For GCP (USE_CLOUD_SQL=true) use the Cloud SQL hybrid
+        # auth path that this class originally provided.
+        if settings.use_cloud_sql:
+            checkpointer = await self._build_checkpointer_hybrid()
+        else:
+            checkpointer = await build_checkpointer()
 
         self.agent_builder = WhyWhyAgentBuilder()
         self.agent = self.agent_builder.build(checkpointer=checkpointer)
