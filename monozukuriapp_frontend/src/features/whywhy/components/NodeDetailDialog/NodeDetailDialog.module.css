@@ -1,0 +1,213 @@
+:root {
+  /* Brand Core */
+  --color-primary: #2a4073;
+  --color-primary-hover: #39528a;
+  --color-accent-cta: #ffd700;
+  --color-accent-cta-hover: #e6c200;
+  --color-link: #4b73ff;
+
+  /* Light Theme */
+  --color-bg-page: #ffffff;
+  --color-bg-surface: #f6f9ff;
+  --color-border: #e5e8ec;
+  --color-text-body: #374151;
+  --color-text-secondary: #5f6d7e;
+
+  /* Semantic Colors */
+  --color-success: #22996e;
+  --color-danger: #e03e43;
+  --color-info: #1e90ff;
+
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+
+  /* Border Radius */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header {
+  background: var(--color-primary);
+  color: white;
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: var(--spacing-sm);
+}
+
+.header p {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.analysis-sections {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
+}
+
+.section-card {
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease-in-out;
+}
+
+.section-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 2px solid var(--color-border);
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-text-body);
+}
+
+.section-icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 14px;
+}
+
+.supporting-facts .section-icon {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.root-cause .section-icon {
+  background: #fff3e0;
+  color: #f57c00;
+}
+
+.prevention-measures .section-icon {
+  background: #e8f5e8;
+  color: var(--color-success);
+}
+
+.copy-button {
+  background: var(--color-link);
+  color: white;
+  border: none;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  transition: all 0.2s ease-in-out;
+}
+
+.copy-button:hover {
+  background: #3960d0;
+  transform: translateY(-1px);
+}
+
+.copy-button:active {
+  transform: scale(0.98);
+}
+
+.copy-button.copied {
+  background: var(--color-success);
+}
+
+.section-content {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--color-text-body);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.section-content.empty {
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: var(--color-success);
+  color: white;
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  transform: translateX(100%);
+  transition: transform 0.3s ease-in-out;
+  z-index: 1000;
+}
+
+.toast.show {
+  transform: translateX(0);
+}
+
+.toast.error {
+  background: var(--color-danger);
+}
+
+@media (min-width: 768px) {
+  .analysis-sections {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .section-card:last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 1024px) {
+  .analysis-sections {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+
+  .section-card:last-child {
+    grid-column: auto;
+  }
+}

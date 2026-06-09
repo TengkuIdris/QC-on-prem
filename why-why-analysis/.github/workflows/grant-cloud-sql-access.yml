@@ -1,0 +1,280 @@
+name: Grant Cloud SQL Access
+
+on:
+  workflow_dispatch:
+    inputs:
+      email:
+        description: 'Email address to grant access (e.g., user@example.com)'
+        required: true
+        type: string
+      environment:
+        description: 'Environment (dev/prod)'
+        required: true
+        type: choice
+        options:
+          - dev
+          - prod
+        default: dev
+
+env:
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  CLOUD_SQL_REGION: asia-northeast1
+  PYTHON_VERSION: '3.12'
+
+jobs:
+  grant-access:
+    name: Grant Cloud SQL Access
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set environment variables
+      run: |
+        if [ "${{ inputs.environment }}" = "prod" ]; then
+          echo "CLOUD_SQL_INSTANCE=why-why-chat-ai-db-prod" >> $GITHUB_ENV
+          echo "CLOUD_SQL_DATABASE=why_why_chat_ai_prod" >> $GITHUB_ENV
+          echo "WORKSPACE=prod" >> $GITHUB_ENV
+        else
+          echo "CLOUD_SQL_INSTANCE=why-why-chat-ai-db-dev" >> $GITHUB_ENV
+          echo "CLOUD_SQL_DATABASE=why_why_chat_ai_dev" >> $GITHUB_ENV
+          echo "WORKSPACE=dev" >> $GITHUB_ENV
+        fi
+
+    - name: Validate email format
+      run: |
+        EMAIL="${{ inputs.email }}"
+        if ! echo "$EMAIL" | grep -E '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$' > /dev/null; then
+          echo "❌ Invalid email format: $EMAIL"
+          exit 1
+        fi
+        echo "✅ Valid email format: $EMAIL"
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+        service_account: ${{ secrets.CICD_SERVICE_ACCOUNT }}
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+
+    - name: Create grant access script
+      run: |
+        cat > grant_access.py << 'EOF'
+        #!/usr/bin/env python3
+        """
+        Cloud SQL アクセス権限付与スクリプト
+        """
+        import os
+        import sys
+        
+        def grant_access():
+            email = os.environ.get("USER_EMAIL", "")
+            if not email:
+                print("❌ No email address provided")
+                sys.exit(1)
+            
+            # 環境変数から情報を取得
+            project_id = os.environ.get("GCP_PROJECT_ID", "")
+            instance = os.environ.get("CLOUD_SQL_INSTANCE", "")
+            database = os.environ.get("CLOUD_SQL_DATABASE", "")
+            region = os.environ.get("CLOUD_SQL_REGION", "asia-northeast1")
+            password = os.environ.get("POSTGRES_PASSWORD", "")
+            
+            if not all([project_id, instance, database, password]):
+                print("❌ Missing required environment variables")
+                sys.exit(1)
+            
+            print(f"""
+        🔐 Granting Cloud SQL Access
+        ============================
+        Email: {email}
+        Project: {project_id}
+        Instance: {instance}
+        Database: {database}
+        """)
+            
+            try:
+                from psycopg_pool import ConnectionPool
+                
+                # PostgreSQL接続文字列を作成
+                socket_path = f"/cloudsql/{project_id}:{region}:{instance}"
+                conn_str = f"host={socket_path} dbname={database} user=postgres password={password}"
+                
+                print("📊 Creating connection to PostgreSQL...")
+                pool = ConnectionPool(
+                    conn_str,
+                    min_size=1,
+                    max_size=5,
+                    open=True
+                )
+                
+                with pool.connection() as conn:
+                    conn.autocommit = True
+                    with conn.cursor() as cur:
+                        # whywhyスキーマへの権限付与
+                        print(f"\n🔨 Granting permissions to {email}...")
+                        
+                        # ユーザーが既に存在するか確認
+                        cur.execute(f"""
+                            SELECT 1 FROM pg_roles WHERE rolname = %s
+                        """, (email,))
+                        
+                        if not cur.fetchone():
+                            # IAMユーザーを作成（Cloud SQL Studioアクセス用）
+                            cur.execute(f'CREATE USER "{email}" WITH LOGIN')
+                            print(f"✅ Created user: {email}")
+                        
+                        # whywhyスキーマへの権限
+                        cur.execute(f"""
+                            -- スキーマへのアクセス権限
+                            GRANT ALL ON SCHEMA whywhy TO "{email}";
+                            GRANT ALL ON ALL TABLES IN SCHEMA whywhy TO "{email}";
+                            GRANT ALL ON ALL SEQUENCES IN SCHEMA whywhy TO "{email}";
+                            GRANT ALL ON ALL FUNCTIONS IN SCHEMA whywhy TO "{email}";
+                            
+                            -- デフォルト権限設定（将来作成されるオブジェクト用）
+                            ALTER DEFAULT PRIVILEGES IN SCHEMA whywhy 
+                            GRANT ALL ON TABLES TO "{email}";
+                            
+                            ALTER DEFAULT PRIVILEGES IN SCHEMA whywhy 
+                            GRANT ALL ON SEQUENCES TO "{email}";
+                            
+                            ALTER DEFAULT PRIVILEGES IN SCHEMA whywhy 
+                            GRANT USAGE ON TYPES TO "{email}";
+                            
+                            ALTER DEFAULT PRIVILEGES IN SCHEMA whywhy 
+                            GRANT EXECUTE ON FUNCTIONS TO "{email}";
+                        """)
+                        print("✅ Granted permissions on whywhy schema")
+                        
+                        # publicスキーマへの権限
+                        cur.execute(f"""
+                            -- publicスキーマへのアクセス権限
+                            GRANT USAGE ON SCHEMA public TO "{email}";
+                            GRANT ALL ON ALL TABLES IN SCHEMA public TO "{email}";
+                            GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO "{email}";
+                            
+                            -- デフォルト権限設定
+                            ALTER DEFAULT PRIVILEGES IN SCHEMA public 
+                            GRANT ALL ON TABLES TO "{email}";
+                            
+                            ALTER DEFAULT PRIVILEGES IN SCHEMA public 
+                            GRANT ALL ON SEQUENCES TO "{email}";
+                        """)
+                        print("✅ Granted permissions on public schema")
+                        
+                        # 権限の確認
+                        print("\n🔍 Verifying permissions...")
+                        cur.execute(f"""
+                            SELECT nspname, 
+                                   has_schema_privilege(%s, nspname, 'CREATE') as can_create,
+                                   has_schema_privilege(%s, nspname, 'USAGE') as can_use
+                            FROM pg_namespace
+                            WHERE nspname IN ('public', 'whywhy')
+                            ORDER BY nspname
+                        """, (email, email))
+                        
+                        results = cur.fetchall()
+                        for schema, can_create, can_use in results:
+                            print(f"  - {schema}: CREATE={can_create}, USAGE={can_use}")
+                
+                pool.close()
+                
+                print(f"""
+        ✅ Access granted successfully!
+        ===============================
+        User {email} can now:
+        - Access Cloud SQL Studio
+        - View and modify tables in 'whywhy' schema
+        - Execute queries on the database
+        
+        To access Cloud SQL Studio:
+        1. Go to Cloud Console > SQL
+        2. Select instance: {instance}
+        3. Click "Cloud SQL Studio"
+        4. Login with Google account: {email}
+        """)
+                
+                return True
+                
+            except Exception as e:
+                print(f"❌ Error: {type(e).__name__}: {e}")
+                import traceback
+                traceback.print_exc()
+                return False
+        
+        if __name__ == "__main__":
+            result = grant_access()
+            sys.exit(0 if result else 1)
+        EOF
+
+    - name: Grant access via Cloud Run Job
+      run: |
+        # Get postgres password from Secret Manager
+        POSTGRES_PASSWORD=$(gcloud secrets versions access latest \
+          --secret="postgres-password-${{ env.WORKSPACE }}" \
+          --project=${{ env.GCP_PROJECT_ID }} 2>/dev/null || echo "")
+        
+        if [ -z "$POSTGRES_PASSWORD" ]; then
+          echo "❌ Failed to retrieve postgres password from Secret Manager"
+          exit 1
+        fi
+        
+        # Encode the script
+        GRANT_SCRIPT_B64=$(cat grant_access.py | base64 -w 0)
+        
+        # Create a unique job name
+        JOB_NAME="grant-access-${{ env.WORKSPACE }}-$(date +%s)"
+        
+        # Create and run the job
+        gcloud run jobs create $JOB_NAME \
+          --image=python:3.12 \
+          --region=${{ env.CLOUD_SQL_REGION }} \
+          --project=${{ env.GCP_PROJECT_ID }} \
+          --set-cloudsql-instances=${{ env.GCP_PROJECT_ID }}:${{ env.CLOUD_SQL_REGION }}:${{ env.CLOUD_SQL_INSTANCE }} \
+          --set-env-vars="GCP_PROJECT_ID=${{ env.GCP_PROJECT_ID }}" \
+          --set-env-vars="CLOUD_SQL_INSTANCE=${{ env.CLOUD_SQL_INSTANCE }}" \
+          --set-env-vars="CLOUD_SQL_DATABASE=${{ env.CLOUD_SQL_DATABASE }}" \
+          --set-env-vars="CLOUD_SQL_REGION=${{ env.CLOUD_SQL_REGION }}" \
+          --set-env-vars="USER_EMAIL=${{ inputs.email }}" \
+          --set-env-vars="POSTGRES_PASSWORD=$POSTGRES_PASSWORD" \
+          --set-env-vars="GRANT_SCRIPT_B64=$GRANT_SCRIPT_B64" \
+          --command='sh' \
+          --args='-c,echo "$GRANT_SCRIPT_B64" | base64 -d > /tmp/grant_access.py && pip install psycopg[binary,pool] && python /tmp/grant_access.py' \
+          --max-retries=0 \
+          --task-timeout=300 \
+          --memory=512Mi
+        
+        echo "🚀 Running Cloud Run Job..."
+        gcloud run jobs execute $JOB_NAME \
+          --region=${{ env.CLOUD_SQL_REGION }} \
+          --project=${{ env.GCP_PROJECT_ID }} \
+          --wait
+        
+        # Get job logs
+        echo "📋 Job execution logs:"
+        gcloud logging read \
+          "resource.type=cloud_run_job AND resource.labels.job_name=$JOB_NAME" \
+          --project=${{ env.GCP_PROJECT_ID }} \
+          --limit=50 \
+          --format="table(timestamp, textPayload)"
+        
+        # Clean up the job
+        echo "🧹 Cleaning up..."
+        gcloud run jobs delete $JOB_NAME \
+          --region=${{ env.CLOUD_SQL_REGION }} \
+          --project=${{ env.GCP_PROJECT_ID }} \
+          --quiet
+
+    - name: Summary
+      if: always()
+      run: |
+        echo "📊 Access Grant Summary"
+        echo "======================"
+        echo "Email: ${{ inputs.email }}"
+        echo "Environment: ${{ inputs.environment }}"
+        echo "Instance: ${{ env.CLOUD_SQL_INSTANCE }}"
+        echo "Database: ${{ env.CLOUD_SQL_DATABASE }}"

@@ -1,0 +1,18 @@
+{
+  "useTabs": false,
+  "printWidth": 120,
+  "trailingComma": "all",
+  "arrowParents": "avoid",
+  "proseWrap": "always",
+  "semi": true,
+  "tabWidth": 2,
+  "singleAttributePerLine": true,
+  "overrides": [
+    {
+      "files": ["*.scss"],
+      "options": {
+        "singleQuote": false
+      }
+    }
+  ]
+}

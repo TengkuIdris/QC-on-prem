@@ -1,0 +1,87 @@
+name: Integration Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize]
+  workflow_dispatch:
+    inputs:
+      test_filter:
+        description: 'Test filter pattern (e.g., test_api_integration)'
+        required: false
+        default: ''
+
+env:
+  PYTHON_VERSION: '3.12'
+  UV_VERSION: '0.5.11'
+
+jobs:
+  integration-test-matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        test-group:
+          - "test_api_integration"
+          - "test_auth_integration"
+          - "test_vertex_ai_integration"
+          - "test_e2e_workflows"
+          - "test_cloud_sql_checkpointer"
+      fail-fast: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/uv
+            .venv
+          key: ${{ runner.os }}-uv-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+
+      - name: Install dependencies
+        run: |
+          uv sync --frozen
+          uv pip list
+
+      - name: Run specific test group
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          TEST_ENV_FILE: .env.test
+        run: |
+          # モックベースのテストのみを実行（高価なテストや実環境が必要なテストを除外）
+          uv run pytest tests/integration/${{ matrix.test-group }}.py -v --tb=short -m "integration and not expensive and not requires_gcp and not requires_vertex_ai"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results-${{ matrix.test-group }}
+          path: |
+            .coverage
+            htmlcov/
+            pytest-report.xml
+          retention-days: 7
+
+      - name: Generate test report
+        if: always()
+        run: |
+          # テストレポートの生成（pytest-htmlがインストールされている場合）
+          if uv pip show pytest-html > /dev/null 2>&1; then
+            uv run pytest tests/integration/${{ matrix.test-group }}.py --html=pytest-report-${{ matrix.test-group }}.html --self-contained-html -m "integration and not expensive and not requires_gcp and not requires_vertex_ai" || true
+          fi

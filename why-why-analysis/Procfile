@@ -1,0 +1,2 @@
+# Streamlitアプリケーションをデプロイするために使用 (?)
+web: PYTHONPATH=. streamlit run why_why_chat_ai/app.py --server.port $PORT

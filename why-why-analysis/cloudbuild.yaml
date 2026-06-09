@@ -1,0 +1,27 @@
+steps:
+  # ビルドステップ
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'asia-northeast1-docker.pkg.dev/${PROJECT_ID}/why-why-chat-ai/api:${SHORT_SHA}', '.']
+
+  # アーティファクトレジストリへのプッシュ
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'asia-northeast1-docker.pkg.dev/${PROJECT_ID}/why-why-chat-ai/api:${SHORT_SHA}']
+
+  # Cloud Deploy リリースの作成
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+      - 'deploy'
+      - 'releases'
+      - 'create'
+      - 'release-${SHORT_SHA}'
+      - '--delivery-pipeline=why-why-chat-ai-pipeline'
+      - '--region=asia-northeast1'
+      - '--annotations=commitId=${REVISION_ID}'
+      - '--images=api=asia-northeast1-docker.pkg.dev/${PROJECT_ID}/why-why-chat-ai/api:${SHORT_SHA}'
+
+images:
+  - 'asia-northeast1-docker.pkg.dev/${PROJECT_ID}/why-why-chat-ai/api:${SHORT_SHA}'
+
+options:
+  logging: CLOUD_LOGGING_ONLY

@@ -1,0 +1,13 @@
+workflow: TrunkBased/preview1
+branches:
+  feature:
+    regex: ^features?[/-](?<BranchName>.+)
+    mode: ContinuousDelivery
+    increment: minor
+  hotfix:
+    regex: ^hotfix(es)?[/-](?<BranchName>.+)
+    mode: ContinuousDelivery
+    increment: patch
+ignore:
+  sha: []
+merge-message-formats: {}

@@ -1,0 +1,49 @@
+# =============================================================================
+# Terraform変数設定例
+# =============================================================================
+# このファイルをコピーして dev.tfvars (または環境名.tfvars) を作成してください:
+# $ cp dev.tfvars.example [dev.tfvars | prod.tfvars]
+
+
+# 環境名
+# 推奨値: dev, stg, prod
+environment = "dev"
+
+# GCPプロジェクトID
+project_id = "your-gcp-project-id-example"
+
+# リージョン
+# 説明: GCPリソースをデプロイするリージョン。Cloud SQL、Cloud Run、Artifact Registryなど
+#      リージョナルリソースの配置場所を決定します。
+# 開発環境推奨: us-central1 (コスト効率が良い)
+# 本番環境推奨: asia-northeast1 (東京、レイテンシ重視)
+region = "us-central1"
+
+# ログレベル (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+# 開発環境: DEBUG (詳細なデバッグ情報を出力、問題の特定に有用)
+# 本番環境: INFO または WARNING (パフォーマンス重視、必要な情報のみ)
+log_level = "DEBUG"
+
+# サービスアカウントのプレフィックス
+# 説明: 作成されるサービスアカウント名の前に付けるプレフィックス。
+#       複数のアプリケーションが同じプロジェクトに存在する可能性がある場合、
+#       名前の衝突を避けるためにプレフィックスを設定します。
+# 例: "whywhy-"
+service_account_prefix = ""
+
+# VPCネットワーク名
+# 説明: 使用するVPCネットワークの名前。通常は "default" を使用しますが、
+#       カスタムネットワークを使用する場合は変更してください。
+#       Cloud SQLのプライベートIP接続に影響します。
+network_name = "default"
+
+
+# =============================================================================
+# 重要な注意点
+# =============================================================================
+# 1. コスト管理:
+#    - リージョン選択によってコストが変わります（us-central1が最も安価）
+#
+# 2. 前提条件:
+#    - このファイルを使用する前に、bootstrap-deployment.sh を実行してプレースホルダーのCloud Runサービスを作成してください
+#    - bootstrap-deployment.sh の実行方法: ./scripts/bootstrap-deployment.sh PROJECT_ID ENV

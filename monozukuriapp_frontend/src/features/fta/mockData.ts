@@ -1,0 +1,53 @@
+import { FTATree } from "./types/ftaTypes";
+
+export const mockFTATree: FTATree = {
+  id: "mock-tree-1",
+  name: "Mock FTA Tree",
+  description: "This is a mock FTA tree for testing purposes",
+  root: {
+    id: "root",
+    content: "Root Cause",
+    children: [
+      {
+        id: "child-1",
+        content: "Child 1",
+        children: [],
+        type: "event",
+        comments: [],
+        depth: undefined,
+        comment: "",
+        name: "",
+      },
+      {
+        id: "child-2",
+        content: "Child 2",
+        children: [],
+        type: "event",
+        comments: [],
+        depth: undefined,
+        comment: "",
+        name: "",
+      },
+    ],
+    type: "gate",
+    gateType: "OR",
+    comments: [],
+    depth: undefined,
+    comment: "",
+    name: "",
+  },
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+  tags: ["mock", "test"],
+  systemName: "Mock System",
+  author: "Test User",
+  startDate: new Date().toISOString(),
+  endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+  riskCriteria: "Mock risk criteria",
+  analysisMode: "qualitative",
+  notificationSettings: {
+    email: true,
+    inApp: true,
+    frequency: "weekly",
+  },
+};

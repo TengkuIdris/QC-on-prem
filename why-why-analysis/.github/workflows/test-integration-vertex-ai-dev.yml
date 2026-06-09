@@ -1,0 +1,250 @@
+name: Vertex AI Dev Integration Tests
+
+on:
+  push:
+    branches: [main]
+  # schedule:
+  #   - cron: '0 2 * * *'  # 定期実行は無効化（必要に応じて再有効化可能）
+  workflow_dispatch:
+    inputs:
+      test_filter:
+        description: 'Specific test to run (e.g., test_real_streaming_analysis)'
+        required: false
+        default: ''
+      timeout_minutes:
+        description: 'Test timeout in minutes'
+        required: false
+        default: '30'
+        type: choice
+        options:
+          - '15'
+          - '30'
+          - '45'
+          - '60'
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  PYTHON_VERSION: '3.12'
+  UV_VERSION: '0.5.11'
+
+jobs:
+  vertex-ai-dev-test:
+    runs-on: ubuntu-latest
+    environment: dev
+    timeout-minutes: ${{ fromJSON(github.event.inputs.timeout_minutes || '30') }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          # CI/CDサービスアカウントを使用（開発環境のアプリケーションサービスアカウントへのimpersonate権限を持つ）
+          service_account: ${{ secrets.CICD_SERVICE_ACCOUNT }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Get Dev Application Service Account
+        id: get-app-sa
+        run: |
+          # 開発環境のアプリケーションサービスアカウントのメールアドレスを取得
+          # Terraformの命名規則に従う: ${service_account_prefix}app-sa-dev
+          # dev環境ではservice_account_prefixは空文字列
+          APP_SA_EMAIL="app-sa-dev@${{ secrets.GCP_PROJECT_ID }}.iam.gserviceaccount.com"
+          echo "app_sa_email=$APP_SA_EMAIL" >> $GITHUB_OUTPUT
+          echo "✅ Using development application service account: $APP_SA_EMAIL"
+
+      - name: Check Cloud Monitoring and Secret Manager Permissions
+        run: |
+          echo "🔐 Checking permissions for application service account..."
+
+          # アプリケーションサービスアカウントのメールアドレス
+          SA_EMAIL="${{ steps.get-app-sa.outputs.app_sa_email }}"
+          PROJECT_ID="${{ secrets.GCP_PROJECT_ID }}"
+
+          # 現在の権限を確認
+          echo "Checking current IAM policy for $SA_EMAIL..."
+          CURRENT_ROLES=$(gcloud projects get-iam-policy $PROJECT_ID \
+            --flatten="bindings[].members" \
+            --filter="bindings.members:serviceAccount:$SA_EMAIL" \
+            --format="value(bindings.role)" 2>/dev/null || echo "")
+
+          echo "Current roles:"
+          echo "$CURRENT_ROLES" | sort
+
+          # Cloud Monitoring権限があるか確認
+          if ! echo "$CURRENT_ROLES" | grep -q "roles/monitoring.metricWriter"; then
+            echo ""
+            echo "⚠️ Application service account lacks monitoring.metricWriter role"
+            echo "This may cause OpenTelemetry metrics export to fail."
+            echo ""
+            echo "To fix this, run:"
+            echo "gcloud projects add-iam-policy-binding $PROJECT_ID \\"
+            echo "  --member=\"serviceAccount:$SA_EMAIL\" \\"
+            echo "  --role=\"roles/monitoring.metricWriter\""
+          else
+            echo "✅ Application service account has monitoring.metricWriter role"
+          fi
+
+          # Secret Manager権限があるか確認
+          if ! echo "$CURRENT_ROLES" | grep -q "roles/secretmanager.secretAccessor"; then
+            echo ""
+            echo "⚠️ Application service account lacks secretmanager.secretAccessor role"
+            echo "This will cause Secret Manager tests to fail."
+            echo ""
+            echo "To fix this, run:"
+            echo "gcloud projects add-iam-policy-binding $PROJECT_ID \\"
+            echo "  --member=\"serviceAccount:$SA_EMAIL\" \\"
+            echo "  --role=\"roles/secretmanager.secretAccessor\""
+          else
+            echo "✅ Application service account has secretmanager.secretAccessor role"
+          fi
+
+
+      - name: Install dependencies
+        run: |
+          uv venv .venv
+          source .venv/bin/activate
+          uv sync --frozen
+          uv pip list
+
+      - name: Set up test environment
+        run: |
+          # テスト用環境変数ファイルを作成
+          cat > .env.test << EOF
+          USE_REAL_VERTEX_AI=true
+          GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}
+          GCP_LOCATION=us-central1
+
+          # その他の必要な環境変数
+          ENVIRONMENT=test
+          LOG_LEVEL=INFO
+          SECURITY_API_KEYS=["test-dev-api-key"]
+          SECURITY_JWT_SECRET=test-dev-jwt-secret
+          SECURITY_JWT_ALGORITHM=HS256
+          SECURITY_JWT_ISSUER=test-issuer
+          SECURITY_JWT_AUDIENCE=test-audience
+          SECURITY_IP_WHITELIST=["0.0.0.0/0"]
+          SECURITY_RATE_LIMIT_DEFAULT=100/hour
+          RATE_LIMIT_PER_MINUTE=100
+          DATABASE_URL=
+
+          # OpenTelemetry設定（テスト時は最小限）
+          OTEL_TRACES_EXPORTER=none
+          OTEL_METRICS_EXPORTER=none
+          OTEL_TRACE_SAMPLING_RATE=0.1
+          EOF
+
+          echo "✅ Test environment configured"
+
+      - name: Run Dev Integration Tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          TEST_ENV_FILE: .env.test
+          # タイムアウト設定（各テスト最大60秒）
+          PYTEST_TIMEOUT: 60
+        run: |
+          source .venv/bin/activate
+
+          echo "🧪 Running Vertex AI dev integration tests..."
+
+          # テストフィルターの適用
+          if [ -n "${{ github.event.inputs.test_filter }}" ]; then
+            echo "Running specific test: ${{ github.event.inputs.test_filter }}"
+            uv run pytest tests/integration/test_vertex_ai_dev.py -v \
+              -m vertex_ai_dev \
+              -k "${{ github.event.inputs.test_filter }}" \
+              --tb=short
+          else
+            echo "Running all Vertex AI dev tests and Secret Manager tests"
+            uv run pytest tests/integration/ -v \
+              -m vertex_ai_dev \
+              --tb=short
+          fi
+
+      - name: Generate test report
+        if: always()
+        run: |
+          # テスト結果のサマリーを生成
+          # .venvが存在するか確認
+          if [ -d ".venv" ]; then
+            source .venv/bin/activate
+
+            # JUnit XML形式でレポート生成（可能な場合）
+            uv run pytest tests/integration/ \
+              -m vertex_ai_dev \
+              --junit-xml=test-results.xml \
+              --quiet || true
+          else
+            echo "Virtual environment not found. Skipping test report generation."
+          fi
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vertex-ai-test-results
+          path: |
+            test-results.xml
+            .coverage
+          retention-days: 7
+
+      - name: Cost monitoring
+        if: always()
+        run: |
+          # テスト実行のコスト概算を記録
+          echo "📊 Test execution summary:"
+          echo "- Test duration: ~${{ github.event.inputs.timeout_minutes || '30' }} minutes"
+          echo "- Estimated cost: < $0.50 (based on Vertex AI pricing)"
+
+          # 月間実行回数の警告
+          CURRENT_DAY=$(date +%d)
+          if [ "$CURRENT_DAY" -gt "20" ]; then
+            echo "⚠️ Warning: Already executed ${CURRENT_DAY} times this month"
+            echo "Consider reducing test frequency to control costs"
+          fi
+
+      # - name: Notify on failure
+      #   if: failure() && github.event_name == 'schedule'
+      #   uses: actions/github-script@v7
+      #   with:
+      #     script: |
+      #       // 定期実行で失敗した場合、Issueを作成
+      #       const title = `🚨 Vertex AI Dev Integration Test Failed - ${new Date().toISOString().split('T')[0]}`;
+      #       const body = `
+      #       The scheduled Vertex AI integration test failed.
+      #
+      #       **Details:**
+      #       - Workflow: ${context.workflow}
+      #       - Run ID: ${context.runId}
+      #       - [View logs](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
+      #
+      #       **Action required:**
+      #       1. Check the test logs for specific failures
+      #       2. Check for any GCP service issues
+      #       3. Verify Vertex AI API status
+      #       `;
+      #
+      #       await github.rest.issues.create({
+      #         owner: context.repo.owner,
+      #         repo: context.repo.repo,
+      #         title: title,
+      #         body: body,
+      #         labels: ['bug', 'integration-test', 'vertex-ai']
+      #       });

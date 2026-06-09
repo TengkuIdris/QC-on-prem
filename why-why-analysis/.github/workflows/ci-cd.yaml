@@ -1,0 +1,467 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'デプロイ環境を選択'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+        - dev
+        - prod
+
+# Workload Identity Federation に必要な権限
+permissions:
+  contents: read  # リポジトリの内容を読む権限
+  id-token: write # OIDCトークンを発行する権限
+  issues: write  # GitHub Secretsの更新に必要
+
+jobs:
+  # セキュリティチェックは別ワークフローで実行されるため、ここでは不要
+  # security-testsワークフローはPRイベントで自動的に実行される
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Create virtual environment
+        run: |
+          python -m pip install --upgrade pip
+          pip install uv
+          uv venv .venv
+      - name: Install dependencies
+        run: |
+          source .venv/bin/activate
+          uv sync
+      - name: Lint with ruff
+        run: |
+          source .venv/bin/activate
+          uv pip install ruff
+          ruff check .
+      - name: Type check with mypy
+        run: |
+          source .venv/bin/activate
+          uv pip install mypy
+          mypy .
+  test:
+    needs: lint # lint ジョブが成功したら実行
+    runs-on: ubuntu-latest
+    # PR時は常にdev環境を使用
+    environment: ${{ github.event_name == 'pull_request' && 'dev' || github.event.inputs.environment || 'dev' }}
+    services: # テスト中に利用する外部サービス
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: testdb
+        ports:
+          - 5432:5432 # ホストの5432ポートをコンテナの5432ポートにマッピング
+        options: >- # PostgreSQL のヘルスチェックオプション
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Authenticate to Google Cloud
+        id: 'auth'
+        uses: 'google-github-actions/auth@v2'
+        with:
+          # Workload Identity Federationを使用
+          workload_identity_provider: '${{ secrets.WIF_PROVIDER }}'
+          service_account: '${{ secrets.CICD_SERVICE_ACCOUNT }}'  # CI/CD用SA（開発環境アプリSAへのimpersonate権限を持つ）
+          project_id: '${{ secrets.GCP_PROJECT_ID }}'
+      - name: Create virtual environment
+        run: |
+          python -m pip install --upgrade pip
+          pip install uv
+          uv venv .venv
+      - name: Install dependencies
+        run: |
+          source .venv/bin/activate
+          uv sync
+          uv pip install pytest pytest-cov coverage # テストとカバレッジ計測ツールをインストール
+      - name: Test with pytest
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/testdb # テスト用DBへの接続情報
+          GOOGLE_CLOUD_PROJECT: ${{ secrets.GCP_PROJECT_ID }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ steps.auth.outputs.credentials_file_path }}
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+        run: |
+          source .venv/bin/activate
+          python -m pytest --cov=why_why_chat_ai tests/ -v -m "not integration" # pytest を実行し、why_why_chat_ai モジュールのカバレッジを計測（integrationテストを除外）
+      - name: Generate coverage report
+        run: |
+          source .venv/bin/activate
+          python -m coverage report
+          python -m coverage xml
+        # カバレッジレポートをコンソールに表示し、 Codecov にアップロードするための XML 形式のカバレッジレポートを生成
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3 # Codecov にカバレッジレポートをアップロード
+        with:
+          file: ./coverage.xml
+
+  terraform:
+    needs: test # test ジョブが成功したら実行（buildと並行）
+    runs-on: ubuntu-latest
+    # PR時は常にdev環境を使用
+    environment: ${{ github.event_name == 'pull_request' && 'dev' || github.event.inputs.environment || 'dev' }}
+    # 手動実行、mainブランチへのpush、PRで実行
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'pull_request'
+    env:
+      DEPLOY_ENV: ${{ github.event_name == 'pull_request' && 'dev' || github.event.inputs.environment || 'dev' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ~1.5
+          terraform_wrapper: false
+
+      - name: Authenticate to Google Cloud
+        uses: 'google-github-actions/auth@v2'
+        with:
+          workload_identity_provider: '${{ secrets.WIF_PROVIDER }}'
+          service_account: '${{ secrets.CICD_SERVICE_ACCOUNT }}'
+          project_id: '${{ secrets.GCP_PROJECT_ID }}'
+
+      - name: Terraform Init
+        working-directory: ./terraform
+        run: |
+          # 環境に応じたbackend設定ファイルを使用
+          if [ "${{ env.DEPLOY_ENV }}" = "prod" ]; then
+            terraform init -backend-config=backend-prod.hcl -input=false
+          else
+            terraform init -backend-config=backend-dev.hcl -input=false
+          fi
+
+      - name: Select Terraform Workspace
+        working-directory: ./terraform
+        run: |
+          terraform workspace select ${{ env.DEPLOY_ENV }} || terraform workspace new ${{ env.DEPLOY_ENV }}
+
+      - name: Create tfvars file from Secrets
+        working-directory: ./terraform
+        env:
+          TFVARS_DEV: ${{ secrets.TFVARS_DEV }}
+          TFVARS_PROD: ${{ secrets.TFVARS_PROD }}
+        run: |
+          if [ "${{ env.DEPLOY_ENV }}" = "prod" ]; then
+            echo "$TFVARS_PROD" > prod.tfvars
+            echo "TFVARS_FILE=prod.tfvars" >> $GITHUB_ENV
+          else
+            echo "$TFVARS_DEV" > dev.tfvars
+            echo "TFVARS_FILE=dev.tfvars" >> $GITHUB_ENV
+          fi
+
+      - name: Terraform Plan and Apply with Auto-Import
+        working-directory: ./terraform
+        run: |
+          # スクリプトを実行権限付きでコピー
+          cp ../scripts/terraform-apply-with-import.sh .
+          chmod +x terraform-apply-with-import.sh
+
+          # Terraform apply with auto-import
+          ./terraform-apply-with-import.sh "${{ env.TFVARS_FILE }}" "${{ env.DEPLOY_ENV }}"
+
+      - name: Extract Terraform Outputs
+        id: terraform_outputs
+        working-directory: ./terraform
+        run: |
+          if [ "${{ env.DEPLOY_ENV }}" = "dev" ]; then
+            DATABASE_URL=$(terraform output -raw dev_database_url 2>/dev/null || echo "")
+          else
+            DATABASE_URL=$(terraform output -raw prod_database_url 2>/dev/null || echo "")
+          fi
+          echo "database_url=$DATABASE_URL" >> $GITHUB_OUTPUT
+
+
+  build:
+    needs: test # test ジョブが成功したら実行（terraformと並行）
+    runs-on: ubuntu-latest
+    # PR時は常にdev環境を使用
+    environment: ${{ github.event_name == 'pull_request' && 'dev' || github.event.inputs.environment || 'dev' }}
+    # 手動実行、mainブランチへのpush、PRで実行
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'pull_request'
+    env:
+      DEPLOY_ENV: ${{ github.event_name == 'pull_request' && 'dev' || github.event.inputs.environment || 'dev' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        id: 'auth'
+        uses: 'google-github-actions/auth@v2'
+        with:
+          # Workload Identity Federationを使用
+          workload_identity_provider: '${{ secrets.WIF_PROVIDER }}'
+          service_account: '${{ secrets.CICD_SERVICE_ACCOUNT }}'  # CI/CD用SA
+          project_id: '${{ secrets.GCP_PROJECT_ID }}'
+          token_format: 'access_token'
+          access_token_lifetime: '3600s'
+          create_credentials_file: true
+          export_environment_variables: true
+
+      - name: Debug - Check authentication
+        run: |
+          echo "Checking authenticated account..."
+          gcloud auth list
+          echo "Current project:"
+          gcloud config get-value project
+          echo "Checking Application Default Credentials..."
+          gcloud auth application-default print-access-token --quiet || echo "No ADC token available"
+          echo "Testing Artifact Registry access..."
+          gcloud artifacts repositories list --location=asia-northeast1 || echo "Artifact Registry access failed"
+
+      - name: Configure Docker to use GCP Artifact Registry
+        run: |
+          gcloud auth configure-docker asia-northeast1-docker.pkg.dev
+
+      - name: Build and Push Docker Image
+        run: |
+          docker build -t asia-northeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/why-why-chat-ai-${{ env.DEPLOY_ENV }}/api:${{ github.sha }} .
+          docker push asia-northeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/why-why-chat-ai-${{ env.DEPLOY_ENV }}/api:${{ github.sha }}
+
+  migrate:
+    needs: [terraform, build] # terraformとbuildの両方が成功したら実行
+    runs-on: ubuntu-latest
+    # PR時は常にdev環境を使用
+    environment: ${{ github.event_name == 'pull_request' && 'dev' || github.event.inputs.environment || 'dev' }}
+    # GitHub ActionsからプライベートIPのCloud SQLに接続できないため無効化
+    if: false
+    env:
+      DEPLOY_ENV: ${{ github.event_name == 'pull_request' && 'dev' || github.event.inputs.environment || 'dev' }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: 'google-github-actions/auth@v2'
+        with:
+          workload_identity_provider: '${{ secrets.WIF_PROVIDER }}'
+          service_account: '${{ secrets.CICD_SERVICE_ACCOUNT }}'
+          project_id: '${{ secrets.GCP_PROJECT_ID }}'
+
+      - name: Set up Cloud SDK
+        uses: 'google-github-actions/setup-gcloud@v2'
+
+      - name: Get Cloud SQL instance details
+        id: sql_info
+        run: |
+          # 環境に応じたインスタンス名を取得
+          if [ "${{ env.DEPLOY_ENV }}" = "prod" ]; then
+            INSTANCE_NAME="why-why-chat-ai-db-prod"
+          else
+            INSTANCE_NAME="why-why-chat-ai-db-dev"
+          fi
+
+          # Cloud SQL インスタンス接続名を取得
+          CONNECTION_NAME=$(gcloud sql instances describe $INSTANCE_NAME \
+            --project=${{ secrets.GCP_PROJECT_ID }} \
+            --format="value(connectionName)" || echo "")
+
+          if [ -z "$CONNECTION_NAME" ]; then
+            echo "Warning: Cloud SQL instance not found. Skipping migration."
+            echo "skip_migration=true" >> $GITHUB_OUTPUT
+          else
+            echo "instance_connection_name=$CONNECTION_NAME" >> $GITHUB_OUTPUT
+            echo "skip_migration=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Download Cloud SQL Proxy
+        if: steps.sql_info.outputs.skip_migration != 'true'
+        run: |
+          # Cloud SQL Proxy v2 をダウンロード
+          wget https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.14.2/cloud-sql-proxy.linux.amd64 -O cloud_sql_proxy
+          chmod +x cloud_sql_proxy
+
+          # Cloud SQL Proxy v2の動作確認
+          ./cloud_sql_proxy --version
+
+      - name: Set up Python
+        if: steps.sql_info.outputs.skip_migration != 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        if: steps.sql_info.outputs.skip_migration != 'true'
+        uses: astral-sh/setup-uv@v3
+
+      - name: Install dependencies
+        if: steps.sql_info.outputs.skip_migration != 'true'
+        run: |
+          uv venv
+          source .venv/bin/activate
+          uv sync
+
+      - name: Run migrations
+        if: steps.sql_info.outputs.skip_migration != 'true'
+        env:
+          # IAM認証の場合は DATABASE_URL を使用しない
+          GOOGLE_CLOUD_PROJECT: ${{ secrets.GCP_PROJECT_ID }}
+        run: |
+          source .venv/bin/activate
+
+          # Cloud SQL Proxy v2 を使用してIAM認証で接続（プライベートIP使用）
+          echo "🔐 Starting Cloud SQL Proxy v2 with IAM authentication..."
+          ./cloud_sql_proxy ${{ steps.sql_info.outputs.instance_connection_name }} \
+            --auto-iam-authn \
+            --port 5432 \
+            --private-ip &
+          PROXY_PID=$!
+
+          # 接続待機
+          echo "⏳ Waiting for Cloud SQL Proxy to be ready..."
+          for i in {1..30}; do
+            if nc -z localhost 5432 2>/dev/null; then
+              echo "✅ Cloud SQL Proxy is ready"
+              break
+            fi
+            if [ $i -eq 30 ]; then
+              echo "❌ Cloud SQL Proxy failed to start"
+              exit 1
+            fi
+            echo "Waiting... ($i/30)"
+            sleep 1
+          done
+
+          # IAM認証用のDATABASE_URLを構築（パスワードなし）
+          if [ "${{ env.DEPLOY_ENV }}" = "prod" ]; then
+            DB_NAME="why_why_chat_ai_prod"
+            DB_USER="app-sa-prod@${{ secrets.GCP_PROJECT_ID }}.iam"
+          else
+            DB_NAME="why_why_chat_ai_dev"
+            DB_USER="app-sa-dev@${{ secrets.GCP_PROJECT_ID }}.iam"
+          fi
+
+          # IAM認証用のDATABASE_URL（パスワードフィールドは空）
+          export DATABASE_URL="postgresql://${DB_USER}@localhost:5432/${DB_NAME}"
+
+          # 現在のマイグレーション状態を確認
+          echo "Current migration state:"
+          alembic current || echo "No migration history found"
+
+          # マイグレーションを実行
+          echo "Running migrations with IAM authentication..."
+          alembic upgrade head
+
+          # 最終状態を確認
+          echo "Final migration state:"
+          alembic current
+
+          # Cloud SQL Proxy を終了
+          kill $PROXY_PID || true
+
+      - name: Migration completed
+        run: |
+          if [ "${{ steps.sql_info.outputs.skip_migration }}" = "true" ]; then
+            echo "⚠️ Migration skipped - Cloud SQL instance not found"
+          else
+            echo "✅ Database migrations completed successfully"
+          fi
+
+  deploy:
+    needs: [terraform, build] # terraform, build ジョブが成功したら実行（migrateはCloud Run起動時に実行）
+    runs-on: ubuntu-latest
+    # PR時は常にdev環境を使用
+    environment: ${{ github.event_name == 'pull_request' && 'dev' || github.event.inputs.environment || 'dev' }}
+    # 手動実行、mainブランチへのpush、PRで実行
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'pull_request'
+    env:
+      DEPLOY_ENV: ${{ github.event_name == 'pull_request' && 'dev' || github.event.inputs.environment || 'dev' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for PR diff comparison
+
+      - name: Authenticate to Google Cloud
+        uses: 'google-github-actions/auth@v2'
+        with:
+          # Workload Identity Federationを使用
+          workload_identity_provider: '${{ secrets.WIF_PROVIDER }}'
+          service_account: '${{ secrets.CICD_SERVICE_ACCOUNT }}'  # CI/CD用SA
+          project_id: '${{ secrets.GCP_PROJECT_ID }}'
+
+
+      - name: Prepare Cloud Run env vars
+        id: prepare_env
+        run: |
+          # Base environment variables for IAM authentication
+          ENV_VARS="ENVIRONMENT=${{ env.DEPLOY_ENV }}
+          RUN_MIGRATIONS=true
+          GOOGLE_CLOUD_PROJECT=${{ secrets.GCP_PROJECT_ID }}
+          GOOGLE_CLOUD_REGION=asia-northeast1
+          USE_CLOUD_SQL=true
+          CLOUD_SQL_USE_IAM_AUTH=true
+          CLOUD_SQL_AUTH_TYPE=hybrid
+          CLOUD_SQL_REGION=asia-northeast1
+          CLOUD_SQL_DATABASE=${{ env.DEPLOY_ENV == 'prod' && 'why_why_chat_ai_prod' || 'why_why_chat_ai_dev' }}
+          CLOUD_SQL_INSTANCE=${{ env.DEPLOY_ENV == 'prod' && 'why-why-chat-ai-db-prod' || 'why-why-chat-ai-db-dev' }}
+          CLOUD_SQL_USER=${{ env.DEPLOY_ENV == 'prod' && 'app-sa-prod' || 'app-sa-dev' }}@${{ secrets.GCP_PROJECT_ID }}.iam
+          CLOUD_SQL_IAM_USER=${{ env.DEPLOY_ENV == 'prod' && 'app-sa-prod' || 'app-sa-dev' }}@${{ secrets.GCP_PROJECT_ID }}.iam
+          OTEL_SDK_DISABLED=true
+          SECURITY_JWKS_URL=https://www.googleapis.com/oauth2/v3/certs
+          SECURITY_JWT_ISSUER=https://accounts.google.com
+          SECURITY_JWT_AUDIENCES=[\"32555940559.apps.googleusercontent.com\"]"
+
+          echo "env_vars<<EOF" >> $GITHUB_OUTPUT
+          echo "$ENV_VARS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Deploy to Cloud Run
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: why-why-chat-ai-${{ env.DEPLOY_ENV }}
+          region: asia-northeast1
+          image: asia-northeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/why-why-chat-ai-${{ env.DEPLOY_ENV }}/api:${{ github.sha }}
+          env_vars: ${{ steps.prepare_env.outputs.env_vars }}
+          flags: |
+            --service-account=app-sa-${{ env.DEPLOY_ENV }}@${{ secrets.GCP_PROJECT_ID }}.iam.gserviceaccount.com
+            --ingress=all
+            --allow-unauthenticated
+            --timeout=300
+            --min-instances=0
+            --max-instances=10
+            --cpu=2
+            --memory=2Gi
+            --add-cloudsql-instances=${{ secrets.GCP_PROJECT_ID }}:asia-northeast1:why-why-chat-ai-db-${{ env.DEPLOY_ENV }}
+            --vpc-connector=cloud-run-connector-${{ env.DEPLOY_ENV }}
+            --vpc-egress=private-ranges-only
+
+      - name: Update Cloud Run with JWT Audience
+        run: |
+          # Cloud Run サービスの URL を取得
+          SERVICE_URL="${{ steps.deploy.outputs.url }}"
+
+          # JWT Audience として Cloud Run サービスの URL を設定
+          gcloud run services update why-why-chat-ai-${{ env.DEPLOY_ENV }} \
+            --region=asia-northeast1 \
+            --update-env-vars=SECURITY_JWT_AUDIENCE=$SERVICE_URL
+
+          echo "✅ Updated JWT Audience to: $SERVICE_URL"
+
+      - name: Show Output
+        run: |
+          echo "🎉 Deployment completed!"
+          echo "Cloud Run URL: ${{ steps.deploy.outputs.url }}"

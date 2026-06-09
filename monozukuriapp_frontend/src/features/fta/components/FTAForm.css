@@ -1,0 +1,75 @@
+/* FTAForm.css */
+.fta-form {
+    padding: 20px;
+    border-right: 1px solid #ddd;
+    height: 100%;
+    box-sizing: border-box;
+  }
+  
+  .fta-form h2 {
+    margin-bottom: 20px;
+    font-size: 24px;
+  }
+  
+  .node-input {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  
+  .node-input input {
+    flex: 1;
+    padding: 10px;
+    font-size: 16px;
+    margin-right: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+  }
+  
+  .node-input button {
+    padding: 10px 20px;
+    font-size: 16px;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .node-input button:hover {
+    background-color: #0056b3;
+  }
+  
+  .tree-structure {
+    margin-top: 20px;
+  }
+  
+  .tree-node {
+    margin-bottom: 10px;
+  }
+  
+  .node-label {
+    padding: 10px;
+    background-color: #f8f9fa;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .node-label:hover {
+    background-color: #e9ecef;
+  }
+  
+  .node-children {
+    padding-left: 20px;
+    margin-top: 10px;
+  }
+  
+  .child-node {
+    padding: 8px;
+    background-color: #f1f1f1;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    margin-bottom: 5px;
+  }
+  

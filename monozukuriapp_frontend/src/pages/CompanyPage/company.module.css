@@ -1,0 +1,442 @@
+/* Color variables from InitialPage */
+:root {
+  --company-primary-color: #004d0f;
+  --company-accent-color: #ffd700;
+  --company-bg-color: #f6f9ff;
+  --company-text-color: #212121;
+  --company-text-secondary: #424242;
+  --company-white: #ffffff;
+  --company-header-height: 64px;
+}
+
+/* Page wrapper */
+.page {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--company-bg-color);
+  padding-top: 1.5rem;
+  box-sizing: border-box;
+}
+
+.pageMain {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 1.5rem 1.5rem 3rem;
+  box-sizing: border-box;
+}
+
+.pageContent {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+@media (min-width: 768px) {
+  .page {
+    padding-top: 2rem;
+  }
+
+  .pageMain {
+    padding: 2rem 2.5rem 4rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .pageMain {
+    padding-left: 3rem;
+    padding-right: 3rem;
+  }
+}
+
+/* Slide container - Desktop: single page, no scroll */
+.slide {
+  width: 100%;
+  height: calc(100vh - var(--company-header-height));
+  padding: 2rem 3rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto 1fr auto auto;
+  grid-template-areas:
+    "title image"
+    "facts business"
+    "philosophy philosophy"
+    "shareholders link";
+  gap: 1.5rem;
+  overflow: clip;
+  box-sizing: border-box;
+}
+
+/* Title area */
+.slideTitle {
+  grid-area: title;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding-right: 2rem;
+}
+
+.heroTitle {
+  font-size: 2.5rem;
+  font-weight: 900;
+  color: var(--company-primary-color);
+  margin: 0 0 0.75rem 0;
+  line-height: 1.2;
+}
+
+.heroSubtitle {
+  font-size: 1.25rem;
+  color: var(--company-text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Image area */
+.slideImage {
+  grid-area: image;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--company-white);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.companyImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  max-height: 100%;
+}
+
+/* Facts area */
+.slideFacts {
+  grid-area: facts;
+  display: flex;
+  flex-direction: column;
+  padding-right: 1rem;
+}
+
+.sectionTitle {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--company-primary-color);
+  margin: 0 0 1rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 3px solid var(--company-accent-color);
+}
+
+.profileGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.profileItem {
+  background: var(--company-white);
+  padding: 0.875rem 1rem;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.profileLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--company-primary-color);
+  margin: 0 0 0.25rem 0;
+}
+
+.profileValue {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--company-text-color);
+  margin: 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Business area */
+.slideBusiness {
+  grid-area: business;
+  display: flex;
+  flex-direction: column;
+  padding-left: 1rem;
+}
+
+.businessList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.businessItem {
+  background: var(--company-white);
+  padding: 1rem;
+  border-radius: 6px;
+  border-left: 4px solid var(--company-primary-color);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.businessItemTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--company-text-color);
+  margin: 0 0 0.5rem 0;
+}
+
+.businessItemDesc {
+  font-size: 0.875rem;
+  color: var(--company-text-secondary);
+  line-height: 1.5;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Philosophy area */
+.slidePhilosophy {
+  grid-area: philosophy;
+  text-align: center;
+  padding: 1rem 0;
+  border-top: 2px solid rgba(0, 77, 15, 0.1);
+  border-bottom: 2px solid rgba(0, 77, 15, 0.1);
+  margin: 0.5rem 0;
+}
+
+.philosophyText {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--company-primary-color);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.philosophyText strong {
+  color: var(--company-primary-color);
+}
+
+/* Shareholders area */
+.slideShareholders {
+  grid-area: shareholders;
+  display: flex;
+  flex-direction: column;
+}
+
+.shareholdersGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.shareholderItem {
+  background: var(--company-white);
+  padding: 1rem;
+  border-radius: 6px;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  border: 2px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.shareholderItem:hover {
+  border-color: var(--company-accent-color);
+  transform: translateY(-2px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.shareholderName {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--company-text-color);
+  margin: 0 0 0.5rem 0;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.shareholderPercentage {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--company-primary-color);
+  margin: 0;
+}
+
+/* Link area */
+.slideLink {
+  grid-area: link;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-left: 1rem;
+}
+
+.externalLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1.75rem;
+  background: var(--company-primary-color);
+  color: var(--company-white);
+  font-size: 1rem;
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: 50px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 77, 15, 0.2);
+}
+
+.externalLink:hover {
+  background: #003a0b;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 77, 15, 0.3);
+}
+
+.linkIcon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  flex-shrink: 0;
+  filter: brightness(0) invert(1);
+}
+
+.linkText {
+  white-space: nowrap;
+}
+
+.linkArrow {
+  font-size: 1.125rem;
+  transition: transform 0.3s ease;
+  flex-shrink: 0;
+}
+
+.externalLink:hover .linkArrow {
+  transform: translateX(4px);
+}
+
+/* Mobile/Tablet: Stack layout with normal scrolling */
+@media (max-width: 1023px) {
+  .page {
+    min-height: auto;
+  }
+
+  .slide {
+    height: auto;
+    min-height: calc(100vh - var(--company-header-height));
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    grid-template-areas:
+      "title"
+      "image"
+      "facts"
+      "business"
+      "philosophy"
+      "shareholders"
+      "link";
+    gap: 2rem;
+    padding: 2rem 1.5rem;
+    overflow: visible;
+  }
+
+  .slideTitle {
+    padding-right: 0;
+    text-align: center;
+  }
+
+  .heroTitle {
+    font-size: 2rem;
+  }
+
+  .heroSubtitle {
+    font-size: 1.125rem;
+  }
+
+  .slideImage {
+    min-height: 300px;
+  }
+
+  .companyImage {
+    max-height: 400px;
+    object-fit: contain;
+  }
+
+  .slideFacts,
+  .slideBusiness {
+    padding: 0;
+  }
+
+  .profileGrid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .profileValue {
+    -webkit-line-clamp: 3;
+  }
+
+  .businessItemDesc {
+    -webkit-line-clamp: 3;
+  }
+
+  .shareholdersGrid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .slideLink {
+    padding: 0;
+    justify-content: center;
+  }
+
+  .externalLink {
+    width: 100%;
+    max-width: 400px;
+    justify-content: center;
+  }
+}
+
+/* Small mobile */
+@media (max-width: 480px) {
+  .slide {
+    padding: 1.5rem 1rem;
+    gap: 1.5rem;
+  }
+
+  .heroTitle {
+    font-size: 1.75rem;
+  }
+
+  .heroSubtitle {
+    font-size: 1rem;
+  }
+
+  .sectionTitle {
+    font-size: 1.25rem;
+  }
+
+  .philosophyText {
+    font-size: 1.25rem;
+  }
+
+  .shareholderPercentage {
+    font-size: 1.25rem;
+  }
+
+  .externalLink {
+    padding: 0.75rem 1.5rem;
+    font-size: 0.9rem;
+  }
+}

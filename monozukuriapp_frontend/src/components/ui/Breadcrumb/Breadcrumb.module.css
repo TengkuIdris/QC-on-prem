@@ -1,0 +1,17 @@
+.breadcrumb {
+    display: flex;
+    flex-wrap: wrap;
+    padding: 8px 16px;
+    background-color: #f4f4f4;
+    border-radius: 4px;
+  }
+  
+  .breadcrumb a {
+    text-decoration: none;
+    color: #3498db;
+  }
+  
+  .breadcrumb a:hover {
+    text-decoration: underline;
+  }
+  

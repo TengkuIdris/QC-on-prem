@@ -1,0 +1,40 @@
+.layout {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 220px;
+  flex-shrink: 0;
+}
+
+.mainContent {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.rightPanel {
+  width: 300px;
+  flex-shrink: 0;
+  background-color: #f0f0f0;
+  overflow-y: auto;
+}
+
+@media (max-width: 1200px) {
+  .rightPanel {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    display: none;
+  }
+  
+  .mainContent {
+    width: 100%;
+  }
+}

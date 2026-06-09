@@ -1,0 +1,202 @@
+name: Security Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # 毎週月曜日の朝9時（JST）に実行
+    - cron: '0 0 * * 1'
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  security-lint:
+    name: Security Linting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install security tools
+        run: |
+          pip install bandit safety pip-audit
+
+      - name: Run Bandit security linter
+        run: |
+          bandit -r why_why_chat_ai/ -f json -o bandit-results.json || true
+
+      - name: Check for known vulnerabilities with Safety
+        run: |
+          safety check --json > safety-results.json || true
+
+      - name: Audit dependencies with pip-audit
+        run: |
+          pip-audit --desc > pip-audit-results.txt || true
+
+      - name: Upload security results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-scan-results
+          path: |
+            bandit-results.json
+            safety-results.json
+            pip-audit-results.txt
+
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        continue-on-error: true  # プライベートリポジトリの場合は失敗を許可
+
+  api-security-tests:
+    name: API Security Tests
+    runs-on: ubuntu-latest
+    needs: security-lint
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: testdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Install dependencies
+        run: |
+          uv venv
+          source .venv/bin/activate
+          uv sync
+
+      - name: Run API security tests
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/testdb
+          SECURITY_API_KEYS: '["test-key-1","test-key-2"]'
+          SECURITY_JWT_ALGORITHM: RS256
+          SECURITY_IP_WHITELIST: '["127.0.0.1","192.168.1.0/24"]'
+          SECURITY_RATE_LIMIT_DEFAULT: 100/hour
+        run: |
+          source .venv/bin/activate
+          # 認証テスト
+          pytest tests/api/test_auth.py -v
+          # ミドルウェアテスト
+          pytest tests/api/test_middleware.py -v
+          # レート制限テスト
+          pytest tests/api/test_rate_limiting.py -v
+          # 統合テスト
+          pytest tests/api/test_security_integration.py -v
+
+  terraform-security:
+    name: Terraform Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+
+      - name: Init TFLint
+        run: tflint --init
+        working-directory: terraform
+
+      - name: Run TFLint
+        run: tflint || true  # 警告のみの場合は失敗させない
+        working-directory: terraform
+
+      - name: Terraform Security Scan with Checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: terraform/
+          quiet: true
+          soft_fail: true
+          framework: terraform
+          output_format: json
+          output_file_path: checkov-results.json
+
+      - name: Upload Terraform scan results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: terraform-scan-results
+          path: checkov-results.json
+
+  container-security:
+    name: Container Security Scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image for scanning
+        run: |
+          docker build -t security-scan:${{ github.sha }} .
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: security-scan:${{ github.sha }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  security-report:
+    name: Security Report Summary
+    runs-on: ubuntu-latest
+    needs: [security-lint, api-security-tests, terraform-security, container-security]
+    if: always()
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: security-artifacts
+
+      - name: Generate security summary
+        run: |
+          echo "# Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Check for critical findings
+          if [ -f security-artifacts/security-scan-results/bandit-results.json ]; then
+            echo "### Bandit (Python Security)" >> $GITHUB_STEP_SUMMARY
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            cat security-artifacts/security-scan-results/bandit-results.json | jq '.metrics' >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Security scans completed. Check individual job results for details." >> $GITHUB_STEP_SUMMARY

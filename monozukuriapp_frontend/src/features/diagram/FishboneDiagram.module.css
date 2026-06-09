@@ -1,0 +1,133 @@
+.fishboneContainer {
+    display: inline-grid;
+    grid-template-columns: repeat(4, auto);
+    grid-template-rows: auto .2em auto;
+    padding-left: 2em;
+    width: 100%;
+    font-family: Arial;
+    --bone-color: #85A0B2;
+    --yellow: #FDBE22;
+    --green: #69E982;
+    --blue: #5CB2FB;
+ }
+ .cause {
+    display: flex;
+    flex-direction: column;
+    transform: skew(40deg);
+    transform-origin: bottom;
+    margin-left: .8em;
+  }
+
+  .rootcause {
+    text-align: center;
+    position: relative;
+    left: 100%;
+    transform: translateX(-50%)  skewX(-40deg);
+    font-size: 1.5em;
+    border-radius: .2em;
+    width: 150px;
+    
+    
+  }
+
+  .subcause {
+    flex-grow: 1;
+    border-right: .2em solid var(--bone-color);
+  }
+
+  .stat {
+    text-align: right;
+    padding-right: 3em;
+    position: relative;
+    transform: skewX(0deg);
+    line-height: 1.5em;
+    font-size: 1em;
+  }
+
+  .stat:before {
+    content: '';
+    display: block;
+    background-color: var(--bone-color);
+    position: absolute;
+    width: 3em;
+    height: .2em;
+    right: 0;
+    top: 50%;
+    transform: translate(.2em, -50%);
+  }
+
+  .line {
+    grid-column-start: 1;
+    grid-column-end: 4;
+    background-color: var(--bone-color);
+
+    ~ .cause {
+      transform: skewX(-40deg);
+      transform-origin: top;
+    }
+    
+    ~ .cause .rootcause {
+      transform: translateX(-50%)  skewX(40deg);
+    }
+
+    ~ .cause .stat {
+      transform: skewX(0deg);
+    }
+  }
+
+  .defect-spacer-top {
+    grid-column-start: 4;
+    grid-column-end: 4;
+    grid-row-start: 1;
+    grid-row-end: 2;
+  }
+
+  .defect {
+    grid-column-start: 4;
+    grid-column-end: 4;
+    grid-row-start: 2;
+    grid-row-end: 3;
+  }
+
+  .defect-spacer-bottom {
+    grid-column-start: 4;
+    grid-column-end: 4;
+    grid-row-start: 3;
+    grid-row-end: 4;
+  }
+
+  .defect-text {
+    position: relative;
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 1em;
+    margin-left: .5em;
+    background-color: var(--bone-color);
+    border-radius: .5em;
+    color: #fff;
+    text-align: center;
+  }
+.flex {
+  display: flex;
+  margin-bottom: 10px;
+  
+}
+.title {
+  justify-content: center;
+  align-items: center;
+  max-width: 150px;
+  word-wrap: break-word;
+  display: flow;
+}
+.titleTop{
+  transform: skew(-40deg);
+
+}
+.titleBottom{
+  transform: skew(40deg);
+}
+
+.defectText {
+    font-size: 1.7em;
+    margin-top: -15px;
+}

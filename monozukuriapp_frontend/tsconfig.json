@@ -1,0 +1,40 @@
+{
+  "compilerOptions": {
+    "target": "es2020",
+    "lib": [
+      "DOM",
+      "DOM.Iterable",
+      "ESNext"
+    ],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "module": "es2020",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ]
+    }
+  },
+  "include": [
+    "src",
+    "vite-env.d.ts",
+    "../monozukuriapp_backend_f1/src/types/enums/problem.ts",
+    "probably_not_used/WhyWhyPage.stories.tsx",
+    "probably_not_used/WhyWhyPage.test.tsx",
+    "probably_not_used/why-analysis-chat.tsx", 
+    "src/workers"  ],
+  "types": [
+    "jest",
+    "node"
+  ]
+}

@@ -1,0 +1,30 @@
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+**/ai-service-config.json
+monozukuriapp_backend/sample_env.md
+monozukuriapp_backend/test-ai-service-prod.sh
+monozukuriapp_backend/ai-service-postman-collection.json
+
+# Dependencies & build output
+**/node_modules/
+**/dist/
+**/.venv/
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+
+# Archives / local artifacts
+*.tar.gz
+*.zip
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Data volumes
+postgres-data/
+**/postgres-data/

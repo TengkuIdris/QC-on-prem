@@ -1,0 +1,418 @@
+swagger: '2.0'
+info:
+  title: why-why-chat-ai-api
+  description: Why-Why Analysis AI Support System API
+  version: 1.0.0
+host: "${api_gateway_host}"
+x-google-backend:
+  address: ${cloud_run_url}
+  deadline: 180.0
+schemes:
+  - https
+produces:
+  - application/json
+consumes:
+  - application/json
+securityDefinitions:
+  api_key:
+    type: apiKey
+    name: X-API-Key
+    in: header
+security:
+  - api_key: []
+paths:
+  /health:
+    get:
+      summary: Health Check
+      operationId: health_check
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: Health status
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+              environment:
+                type: string
+              version:
+                type: string
+              database:
+                type: string
+              checkpointer:
+                type: object
+  /v1/threads:
+    post:
+      tags:
+        - threads
+      summary: 新規分析スレッドを作成
+      description: 新規なぜなぜ分析スレッドを作成し、問題情報を登録します。
+      operationId: create_thread
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/ThreadCreateRequest'
+      responses:
+        '201':
+          description: スレッドが正常に作成されました
+          schema:
+            $ref: '#/definitions/ThreadCreateResponse'
+        '400':
+          description: リクエストデータのバリデーションエラー
+        '401':
+          description: 認証失敗
+        '403':
+          description: 権限不足
+        '422':
+          description: Validation Error
+          schema:
+            $ref: '#/definitions/HTTPValidationError'
+        '429':
+          description: レート制限超過
+        '500':
+          description: 内部サーバーエラー
+  /v1/threads/{thread_id}:
+    get:
+      tags:
+        - threads
+      summary: スレッド状態を取得
+      description: 指定されたスレッドの現在の分析状態を取得します。
+      operationId: get_thread_state
+      produces:
+        - application/json
+      parameters:
+        - name: thread_id
+          in: path
+          required: true
+          type: string
+          description: Thread ID
+      responses:
+        '200':
+          description: スレッドの状態情報
+          schema:
+            $ref: '#/definitions/ThreadStateResponse'
+        '401':
+          description: 認証失敗
+        '403':
+          description: 権限不足
+        '404':
+          description: スレッドが見つかりません
+        '429':
+          description: レート制限超過
+        '500':
+          description: 内部サーバーエラー
+  /v1/threads/{thread_id}/stream:
+    post:
+      tags:
+        - threads
+      summary: ストリーミング分析を実行
+      description: 指定されたスレッドでなぜなぜ分析をストリーミング実行します。
+      operationId: stream_analysis
+      consumes:
+        - application/json
+      produces:
+        - text/event-stream
+      parameters:
+        - name: thread_id
+          in: path
+          required: true
+          type: string
+          description: Thread ID
+        - name: body
+          in: body
+          required: false
+          schema:
+            $ref: '#/definitions/StreamRequest'
+      responses:
+        '200':
+          description: Server-Sent Events stream
+          schema:
+            type: string
+            format: event-stream
+        '401':
+          description: 認証失敗
+        '403':
+          description: 権限不足
+        '404':
+          description: スレッドが見つかりません
+        '429':
+          description: レート制限超過
+        '500':
+          description: 内部サーバーエラー
+  /debug/env:
+    get:
+      tags:
+        - debug
+      summary: 環境変数とランタイム情報を取得
+      description: 環境変数とランタイム情報を取得します（開発環境のみ）
+      operationId: get_environment
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: 環境変数とランタイム情報
+          schema:
+            type: object
+            properties:
+              runtime_info:
+                type: object
+              environment_variables:
+                type: object
+              python_path:
+                type: array
+                items:
+                  type: string
+              working_directory:
+                type: string
+        '401':
+          description: 認証失敗
+        '403':
+          description: 権限不足
+        '404':
+          description: エンドポイントが見つかりません
+        '500':
+          description: 内部サーバーエラー
+  /debug/checkpointer-status:
+    get:
+      tags:
+        - debug
+      summary: チェックポインターの詳細な状態を取得
+      description: チェックポインターの詳細な状態を取得します（開発環境のみ）
+      operationId: get_checkpointer_status
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: チェックポインターの状態情報
+          schema:
+            type: object
+            properties:
+              environment_variables:
+                type: object
+              settings:
+                type: object
+              checkpointer:
+                type: object
+              initialization_log:
+                type: array
+                items:
+                  type: object
+              connection_test:
+                type: object
+              timestamp:
+                type: string
+                format: date-time
+        '401':
+          description: 認証失敗
+        '403':
+          description: 権限不足
+        '404':
+          description: エンドポイントが見つかりません
+        '500':
+          description: 内部サーバーエラー
+  /debug/checkpointer-test:
+    get:
+      tags:
+        - debug
+      summary: チェックポインターのテスト用エンドポイント
+      description: チェックポインターの読み書き機能をテストします（開発環境のみ）
+      operationId: test_checkpointer
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: チェックポインターテスト結果
+          schema:
+            type: object
+            properties:
+              test_name:
+                type: string
+              test_time:
+                type: string
+                format: date-time
+              checkpointer_info:
+                type: object
+              write_test:
+                type: object
+              read_test:
+                type: object
+              errors:
+                type: array
+                items:
+                  type: string
+        '401':
+          description: 認証失敗
+        '403':
+          description: 権限不足
+        '404':
+          description: エンドポイントが見つかりません
+        '500':
+          description: 内部サーバーエラー
+definitions:
+  ThreadCreateRequest:
+    type: object
+    required:
+      - problem
+    properties:
+      problem:
+        $ref: '#/definitions/ProblemInput'
+  ThreadCreateResponse:
+    type: object
+    required:
+      - thread_id
+      - created_at
+    properties:
+      thread_id:
+        type: string
+        description: 作成されたスレッドID
+      created_at:
+        type: string
+        format: date-time
+        description: 作成日時
+  StreamRequest:
+    type: object
+    properties:
+      user_message:
+        type: string
+        description: ユーザーからの応答メッセージ
+      is_retry:
+        type: boolean
+        default: false
+        description: ユーザーが入力内容を修正して再送信する意図を示す
+  ThreadStateResponse:
+    type: object
+    required:
+      - thread_id
+      - created_at
+      - status
+      - state
+    properties:
+      thread_id:
+        type: string
+      created_at:
+        type: string
+        format: date-time
+      updated_at:
+        type: string
+        format: date-time
+      status:
+        type: string
+        enum: [running, waiting_for_input, completed, error]
+      state:
+        type: object
+        properties:
+          problem:
+            $ref: '#/definitions/ProblemInput'
+          chat_history:
+            type: array
+            items:
+              type: object
+          why_nodes:
+            type: array
+            items:
+              $ref: '#/definitions/WhyNode'
+          root_causes:
+            type: array
+            items:
+              $ref: '#/definitions/RootCause'
+  ProblemInput:
+    type: object
+    required:
+      - title
+    properties:
+      title:
+        type: string
+        description: 不具合概要/問題のタイトル
+      product_name:
+        type: string
+        description: 製品名
+      occurrence_date:
+        type: string
+        format: date-time
+        description: 不具合発見日時
+      process:
+        type: string
+        description: 対象工程/ライン番号
+      location:
+        type: string
+        description: 発生場所（工場名・エリア）
+      severity:
+        type: string
+        enum: [LOW, MEDIUM, HIGH]
+        description: 問題の重大度
+      description:
+        type: string
+        description: 問題の詳細説明
+      language:
+        type: string
+        default: ja
+        description: 出力言語
+  WhyNode:
+    type: object
+    required:
+      - id
+      - name
+      - level
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      level:
+        type: integer
+      parent_id:
+        type: string
+      children_ids:
+        type: array
+        items:
+          type: string
+      supporting_facts:
+        type: string
+      is_root_cause:
+        type: boolean
+      root_cause_confidence:
+        type: number
+      root_cause_judgement:
+        type: string
+      recurrence_prevention_measures:
+        type: string
+  RootCause:
+    type: object
+    required:
+      - cause
+      - confidence
+      - judgement_reason
+      - countermeasures
+    properties:
+      cause:
+        type: string
+      confidence:
+        type: number
+      judgement_reason:
+        type: string
+      countermeasures:
+        type: string
+  HTTPValidationError:
+    type: object
+    properties:
+      detail:
+        type: array
+        items:
+          type: object
+          properties:
+            loc:
+              type: array
+              items:
+                type: string
+            msg:
+              type: string
+            type:
+              type: string

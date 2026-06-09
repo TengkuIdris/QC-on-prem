@@ -1,0 +1,13 @@
+FROM python:3.12-slim
+
+# 必要なパッケージをインストール
+RUN pip install --no-cache-dir psycopg[binary]
+
+# 作業ディレクトリを設定
+WORKDIR /app
+
+# 初期化スクリプトをコピー
+COPY cloud-sql-init-ci.py /app/init.py
+
+# デフォルトコマンドを設定
+CMD ["python", "/app/init.py"]

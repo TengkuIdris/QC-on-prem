@@ -1,0 +1,225 @@
+# Monozukuri on-prem — top-level docker-compose
+#
+# Runs the on-prem stack per the architecture diagram:
+#   - frontend     (React SPA served by nginx)              \
+#   - backend      (NestJS API)                              | Application tier
+#   - api          (Python why-why analysis agent)          /
+#   - postgres     (shared instance, two databases)
+#   - redis        (cache + Bull queue)
+#   - minio        (S3-compatible object store) + minio-init (bucket bootstrap)
+#
+# OUT OF SCOPE (external — referenced by URL only):
+#   - LLM service  (OpenAI-compatible, e.g. TallgeeseAI / vLLM / Ollama) — set LLM_BASE_URL
+#   - RAG service  (POST /retrieve, see IMPLEMENTATION_SPEC.md Part A C2) — set RAG_SERVICE_URL
+# These run elsewhere and are NOT defined here. If you want to run them on
+# this same docker host for development, add them to a separate compose file
+# and attach to the network below.
+#
+# Required host env (place a .env file alongside this compose):
+#   POSTGRES_PASSWORD       — single password used by both DBs
+#   AI_SERVICE_API_KEY      — NestJS <-> agent shared secret (header x-api-key)
+#   LLM_BASE_URL            — external LLM URL (e.g. http://host.docker.internal:11434/v1 for Ollama)
+#   LLM_MODEL               — served model name
+#   LLM_API_KEY             — if the LLM service requires auth, else any value
+#   RAG_SERVICE_URL         — external RAG URL (e.g. http://host.docker.internal:8001) — only if RAG_ENABLED=true
+#
+# Optional MinIO/S3 overrides:
+#   MINIO_ROOT_USER         — defaults to minio-admin
+#   MINIO_ROOT_PASSWORD     — defaults to minio-admin-password (CHANGE for anything real)
+#   S3_BUCKET_NAME          — defaults to monozukuri-uploads
+#   S3_PUBLIC_URL           — defaults to http://localhost:9000; set to public host if exposed
+#
+# On-prem defaults (no AWS auth):
+#   DISABLE_AUTH=true       — backend CognitoGuard short-circuits, injects stub user
+#   VITE_DISABLE_AUTH=true  — frontend skips Cognito, dispatches synthetic admin user
+# Flip both to false (and provide AWS_USER_POOLS_ID etc.) to re-enable auth.
+#
+# Per-repo docker-compose.yml files still exist for component-level dev.
+# This one is the integrated runtime.
+
+services:
+  redis:
+    # Cache + Bull queue store. Backend reads REDIS_HOST / REDIS_PORT.
+    # No password — backend's redisConfig doesn't pass one.
+    image: redis:7-alpine
+    container_name: monozukuri-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    # S3-compatible object store for file uploads (Pareto/Fishbone/FTA/etc).
+    # API on :9000, console on :9001. The bucket is created by `minio-init`.
+    image: minio/minio:latest
+    container_name: monozukuri-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio-admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio-admin-password}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio-init:
+    # One-shot init: wait for minio, create the bucket, make it publicly
+    # readable so file URLs returned to the browser work without signing.
+    image: minio/mc:latest
+    container_name: monozukuri-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-minio-admin} ${MINIO_ROOT_PASSWORD:-minio-admin-password} &&
+      mc mb -p local/${S3_BUCKET_NAME:-monozukuri-uploads} || true &&
+      mc anonymous set download local/${S3_BUCKET_NAME:-monozukuri-uploads} &&
+      echo 'Bucket initialised.'
+      "
+    restart: "no"
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: monozukuri-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev_password}
+      # Bootstraps both DBs the first time the volume is created.
+      # Backend uses Jatco_Postgres; agent uses why_why_chat_ai.
+      POSTGRES_DB: Jatco_Postgres
+      POSTGRES_USER: app_user
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-multiple-dbs.sql:/docker-entrypoint-initdb.d/init-multiple-dbs.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app_user -d Jatco_Postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    # Python why-why analysis agent (LangGraph + FastAPI)
+    build:
+      context: ./why-why-analysis
+      dockerfile: Dockerfile
+    container_name: monozukuri-api
+    restart: unless-stopped
+    # Lets the container reach an LLM / RAG service running on the host machine
+    # via http://host.docker.internal:PORT on Linux. Mac/Windows already have
+    # this name available; on Linux the extra_hosts mapping makes it work too.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      # Agent reads PORT (default 8080); pin it to 8000 so the published
+      # port and the NestJS AI_SERVICE_URL line up.
+      - PORT=8000
+      # Database / checkpointing
+      - DATABASE_URL=postgresql://app_user:${POSTGRES_PASSWORD:-dev_password}@postgres:5432/why_why_chat_ai
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - USE_CLOUD_SQL=false
+      - CHECKPOINT_SCHEMA=whywhy
+      # LLM swap (Part B1–B2 of the spec)
+      - LLM_PROVIDER=local
+      - LLM_BASE_URL=${LLM_BASE_URL}
+      - LLM_MODEL=${LLM_MODEL}
+      - LLM_API_KEY=${LLM_API_KEY:-not-needed}
+      - LLM_TIMEOUT=${LLM_TIMEOUT:-120}
+      # RAG (Part A C2 contract). Start with RAG_ENABLED=false until the RAG
+      # service exists; flip on once a stand-in or real service is reachable.
+      - RAG_ENABLED=${RAG_ENABLED:-false}
+      - RAG_SERVICE_URL=${RAG_SERVICE_URL}
+      - RAG_TIMEOUT=${RAG_TIMEOUT:-30}
+      # API auth (NestJS sends x-api-key)
+      - SECURITY_API_KEYS=["${AI_SERVICE_API_KEY}"]
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  backend:
+    # NestJS backend. Repointed from the GCP gateway to the local agent
+    # via AI_SERVICE_URL (Part C of the spec). All AI calls (create thread,
+    # SSE stream) flow through this transparent proxy.
+    #
+    # DISABLE_AUTH=true short-circuits CognitoGuard for on-prem use. Drop the
+    # flag (or set to false) to re-enable AWS Cognito-backed auth.
+    build:
+      context: ./monozukuriapp_backend
+      dockerfile: Dockerfile
+    container_name: monozukuri-backend
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - APP_PORT=3001
+      - APP_PREFIX=/api/v1
+      - DATABASE_URL=postgresql://app_user:${POSTGRES_PASSWORD:-dev_password}@postgres:5432/Jatco_Postgres?schema=public
+      # ---- The whole point of Part C: point at the local agent. ----
+      - AI_SERVICE_URL=http://api:8000
+      - AI_SERVICE_API_KEY=${AI_SERVICE_API_KEY}
+      # ---- On-prem: no Cognito. Guard returns a stub user.        ----
+      - DISABLE_AUTH=${DISABLE_AUTH:-true}
+      # ---- Redis (cache + Bull queue) ----
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      # ---- S3 (MinIO) ----
+      # Container-to-container endpoint for uploads/deletes:
+      - AWS_S3_ENDPOINT=http://minio:9000
+      # Public URL the browser uses to fetch uploaded files. Override this if
+      # you front MinIO with a reverse proxy or expose it on a different host.
+      - AWS_S3_PUBLIC_URL=${S3_PUBLIC_URL:-http://localhost:9000}
+      - AWS_S3_BUCKET_NAME=${S3_BUCKET_NAME:-monozukuri-uploads}
+      - AWS_CONFIG_REGION=us-east-1
+      - AWS_CONFIG_ACCESS_KEY_ID=${MINIO_ROOT_USER:-minio-admin}
+      - AWS_CONFIG_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD:-minio-admin-password}
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      api:
+        condition: service_started
+
+  frontend:
+    # React UI (served by nginx). The 「参考事例」 panel reads
+    # state.retrieved_context populated by the retrieve_context SSE event.
+    # VITE_DISABLE_AUTH must be baked in at build time (Vite inlines it).
+    build:
+      context: ./monozukuriapp_frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_DISABLE_AUTH: ${VITE_DISABLE_AUTH:-true}
+        VITE_BACKEND_URL_V1: /api/v1
+    container_name: monozukuri-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+    driver: local
+  minio_data:
+    driver: local

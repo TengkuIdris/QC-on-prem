@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: why-why-chat-ai-postgres
+    environment:
+      POSTGRES_DB: why_why_chat_ai_dev
+      POSTGRES_USER: app_user
+      POSTGRES_PASSWORD: dev_password
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-postgres.sql:/docker-entrypoint-initdb.d/init-postgres.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app_user -d why_why_chat_ai_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: why-why-chat-ai-api
+    environment:
+      - DATABASE_URL=postgresql://app_user:dev_password@postgres:5432/why_why_chat_ai_dev
+      - ENVIRONMENT=development
+      - LOG_LEVEL=DEBUG
+      - GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT:-dummy-project}
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials.json
+      # Cloud SQL Checkpointer設定（ローカルテスト用）
+      - USE_CLOUD_SQL=false  # ローカルではメモリベースのチェックポインター使用
+      - GCP_PROJECT_ID=${GOOGLE_CLOUD_PROJECT:-dummy-project}
+      - CLOUD_SQL_REGION=asia-northeast1
+      - CLOUD_SQL_INSTANCE=why-why-chat-ai-db-dev
+      - CLOUD_SQL_DATABASE=why_why_chat_ai_dev
+      - CHECKPOINT_SCHEMA=whywhy
+    ports:
+      - "8000:8000"
+      - "5678:5678" # for debug
+    volumes:
+      - .:/app
+      - ${GOOGLE_APPLICATION_CREDENTIALS:-./dummy-credentials.json}:/app/credentials.json:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "
+        echo 'Starting API...' &&
+        python -m uvicorn why_why_chat_ai.api.app:app --host 0.0.0.0 --port 8000 --reload
+      "
+
+  streamlit:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: why-why-chat-ai-streamlit
+    environment:
+      - DATABASE_URL=postgresql://app_user:dev_password@postgres:5432/why_why_chat_ai_dev
+      - ENVIRONMENT=development
+      - LOG_LEVEL=DEBUG
+      - GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT:-dummy-project}
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials.json
+    ports:
+      - "8501:8501"
+    volumes:
+      - .:/app
+      - ${GOOGLE_APPLICATION_CREDENTIALS:-./dummy-credentials.json}:/app/credentials.json:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "
+        echo 'Starting Streamlit application...' &&
+        streamlit run why_why_chat_ai/poc/app.py --server.port 8501 --server.address 0.0.0.0
+      "
+
+volumes:
+  postgres_data:
+    driver: local

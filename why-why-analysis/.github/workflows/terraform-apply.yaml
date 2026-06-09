@@ -1,0 +1,116 @@
+name: Terraform Apply
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'デプロイ環境を選択'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+        - dev
+        - prod
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: 'google-github-actions/auth@v2'
+        with:
+          workload_identity_provider: '${{ secrets.WIF_PROVIDER }}'
+          service_account: '${{ secrets.CICD_SERVICE_ACCOUNT }}'
+          project_id: '${{ secrets.GCP_PROJECT_ID }}'
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.1  # 1.6.0にはTF_WORKSPACEのバグがあるため1.6.1を使用
+          terraform_wrapper: false  # JSON出力を取得するために必要
+
+      - name: Debug TF_WORKSPACE Source
+        run: |
+          echo "=== Investigating TF_WORKSPACE source ==="
+          echo "TF_WORKSPACE: ${TF_WORKSPACE:-not set}"
+          echo "github.event.inputs.environment: ${{ github.event.inputs.environment }}"
+          echo "All environment variables:"
+          env | sort | grep -E "(TF_|GITHUB_|TERRAFORM)" || true
+          echo "==================================="
+
+      - name: Terraform Init
+        working-directory: ./terraform
+        run: |
+          # 環境に応じたbackend設定ファイルを使用
+          if [ "${{ github.event.inputs.environment }}" = "prod" ]; then
+            terraform init -backend-config=backend-prod.hcl -input=false
+          else
+            terraform init -backend-config=backend-dev.hcl -input=false
+          fi
+
+      - name: Select Terraform Workspace
+        working-directory: ./terraform
+        run: |
+          # TF_WORKSPACE 環境変数が設定されていると workspace select が機能しないため明示的にunset
+          unset TF_WORKSPACE
+          terraform workspace select ${{ github.event.inputs.environment }} || terraform workspace new ${{ github.event.inputs.environment }}
+
+      - name: Create tfvars file from Secrets
+        working-directory: ./terraform
+        env:
+          TFVARS_DEV: ${{ secrets.TFVARS_DEV }}
+          TFVARS_PROD: ${{ secrets.TFVARS_PROD }}
+        run: |
+          if [ "${{ github.event.inputs.environment }}" = "prod" ]; then
+            echo "$TFVARS_PROD" > prod.tfvars
+            echo "TFVARS_FILE=prod.tfvars" >> $GITHUB_ENV
+          else
+            echo "$TFVARS_DEV" > dev.tfvars
+            echo "TFVARS_FILE=dev.tfvars" >> $GITHUB_ENV
+          fi
+
+      - name: Terraform Plan and Apply with Auto-Import
+        working-directory: ./terraform
+        run: |
+          # スクリプトを実行権限付きでコピー
+          cp ../scripts/terraform-apply-with-import.sh .
+          chmod +x terraform-apply-with-import.sh
+
+          # Terraform apply with auto-import
+          ./terraform-apply-with-import.sh "${{ env.TFVARS_FILE }}" "${{ github.event.inputs.environment }}"
+
+      - name: Get Terraform Outputs
+        id: terraform_outputs
+        working-directory: ./terraform
+        run: |
+          # Terraform outputsをJSON形式で取得
+          terraform output -json > outputs.json
+
+          # デバッグ用：利用可能な output keys を表示
+          echo "Available outputs:"
+          jq 'keys' outputs.json
+
+          # 環境に応じたoutput名を設定
+          if [ "${{ github.event.inputs.environment }}" = "prod" ]; then
+            INSTANCE_KEY="prod_cloud_sql_instance_connection_name"
+          else
+            INSTANCE_KEY="dev_cloud_sql_instance_connection_name"
+          fi
+
+          # Cloud SQL接続情報を取得
+          echo "cloud_sql_instance=$(jq -r ".${INSTANCE_KEY}.value // empty" outputs.json)" >> $GITHUB_OUTPUT
+
+
+      - name: Display Non-Sensitive Outputs
+        working-directory: ./terraform
+        run: |
+          echo "=== Terraform Outputs (Non-Sensitive) ==="
+          echo "Cloud SQL Instance: ${{ steps.terraform_outputs.outputs.cloud_sql_instance }}"
+          echo "Environment: ${{ github.event.inputs.environment }}"

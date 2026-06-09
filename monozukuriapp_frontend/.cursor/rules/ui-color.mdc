@@ -1,0 +1,430 @@
+---
+description: This rules is for UI UX design guide.
+globs: 
+alwaysApply: false
+---
+# KaizenHub Web Application UI Design Guide
+
+## 1. Overview
+
+KaizenHub is a web application that provides tools for quality improvement and operational efficiency. This document defines the UI design guidelines for a consistent user experience.
+
+### 1.1 Design Principles
+
+- **Simplicity**: Allow task completion with minimal elements.
+- **Consistency**: Apply a common design language throughout.
+- **Efficiency**: Enable completion of major tasks with few clicks.
+- **Clarity**: Clearly define visual hierarchy and information importance.
+- **Accessibility**: Comply with WCAG 2.1 AA level.
+
+## 2. Color System
+
+### 2.1 Brand Colors
+
+| Name                | HEX       | Usage                                       |
+| ------------------- | --------- | ------------------------------------------- |
+| Kaizen Navy         | `#2A4073` | Header background, primary buttons, headings |
+| Kaizen Navy Hover   | `#39528A` | Hover state for primary elements            |
+| Kaizen Link         | `#4B73FF` | Links, focus states, accents                |
+| Kaizen Gold         | `#FFD700` | CTA buttons, important actions              |
+
+### 2.2 UI Base Colors (Light Mode)
+
+| Name               | HEX       | Usage                         |
+| ------------------ | --------- | ----------------------------- |
+| Background Page    | `#FFFFFF` | Page background               |
+| Background Surface | `#F6F9FF` | Card, modal background        |
+| Border             | `#E5E8EC` | Borders, separators           |
+| Text Body          | `#374151` | Body text                     |
+| Text Secondary     | `#5F6D7E` | Secondary text, labels        |
+
+### 2.3 Functional Colors
+
+| Name      | HEX       | Usage                               |
+| --------- | --------- | ----------------------------------- |
+| Success   | `#22996E` | Success messages, completed states  |
+| Danger    | `#E03E43` | Errors, warnings, delete actions    |
+| Info      | `#1E90FF` | Informational messages, notifications |
+| AI Accent | `#4B73FF` | Highlighting AI features            |
+
+## 3. Typography
+
+### 3.1 Font Family
+
+- **Primary Font**: Noto Sans JP
+- **Fallback Fonts**: -apple-system, BlinkMacSystemFont, sans-serif
+
+### 3.2 Font Size Hierarchy
+
+| Element | Size  | Weight | Line Height | Usage                 |
+| ------- | ----- | ------ | ----------- | --------------------- |
+| H1      | 24px  | 700    | 1.3         | Main titles           |
+| H2      | 18px  | 700    | 1.3         | Section titles        |
+| H3      | 16px  | 500    | 1.4         | Subsection titles     |
+| Body    | 14px  | 400    | 1.5         | Body text             |
+| Small   | 12px  | 400    | 1.4         | Auxiliary text, labels |
+
+## 4. Layout Structure
+
+### 4.1 Basic Grid
+
+- **Base Margin**: 16px
+- **Content Padding**: 16px
+- **Element Spacing**: 8px (small) / 16px (medium) / 24px (large)
+
+### 4.2 Page Structure
+
+```
++------------------+------------------------------------------+
+| Sidebar          | Header                                   |
+| (Fixed width 70px-200px) | (Fixed height 64px)                |
+|                  +------------------------------------------+
+|                  | Content Area                             |
+|                  |                                          |
+|                  |                                          |
+|                  |                                          |
+|                  |                                          |
++------------------+------------------------------------------+
+```
+
+### 4.3 Content Layout Strategies
+
+- **Common Pattern**: Many feature pages or complex views may adopt a multi-column layout, often managed with a draggable splitter for user flexibility.
+- **Typical Configuration**: A two-column layout (e.g., settings/inputs on one side, preview/results on the other) is a frequent pattern. Refer to Section 10 for specific examples.
+- **Adaptability**: The exact ratio and minimum widths for columns should be determined based on the content and user needs for that specific view, ensuring responsiveness.
+
+## 5. Component Library
+
+### 5.1 Navigation
+
+#### Sidebar
+
+- **Default Width**: 70px
+- **Expanded Width**: 200px
+- **Background Color**: Kaizen Navy (#2A4073)
+- **Active Indicator**: Accent line on the left (#FFD700)
+- **Icon Color**: White (#FFFFFF)
+
+#### Header
+
+- **Height**: 64px
+- **Background Color**: Kaizen Navy (#2A4073)
+- **Text Color**: White (#FFFFFF)
+- **Padding**: 16px left and right
+
+#### Tab Navigation
+
+- **Height**: 56px
+- **Background Color**: White (#FFFFFF)
+- **Active Tab**: Bottom border (#2A4073)
+- **Text Color**: Normal #5F6D7E / Active #2A4073
+
+### 5.2 Buttons
+
+#### Primary Button
+
+- **Background Color**: #2A4073 / Hover #39528A
+- **Text Color**: White (#FFFFFF)
+- **Padding**: 6px 12px
+- **Height**: 36px
+- **Border Radius**: 4px
+
+#### Secondary Button
+
+- **Background Color**: Transparent / Hover #F6F9FF
+- **Border**: #E5E8EC
+- **Text Color**: #2A4073
+- **Padding**: 6px 12px
+- **Height**: 36px
+- **Border Radius**: 4px
+
+#### CTA Button
+
+- **Background Color**: #FFD700 / Hover #E6C200
+- **Text Color**: #2A4073
+- **Padding**: 6px 12px
+- **Height**: 36px
+- **Border Radius**: 4px
+
+#### AI Button
+
+- **Background Color**: #4B73FF / Hover #3960D0
+- **Text Color**: White (#FFFFFF)
+- **Padding**: 6px 12px
+- **Height**: 36px
+- **Border Radius**: 4px
+
+#### Icon Button
+
+- **Size**: 28px x 28px (node actions) / 36px x 36px (toolbar)
+- **Background Color**: Transparent / Hover rgba(0, 0, 0, 0.04)
+- **Text Color**: Context-dependent
+- **Border Radius**: 4px
+
+### 5.3 Form Elements
+
+#### Input Field
+
+- **Height**: 36px
+- **Padding**: 8px 12px
+- **Border**: #E5E8EC
+- **Background Color**: White (#FFFFFF)
+- **Text Color**: #374151
+- **Focus State**: Border #4B73FF
+
+#### Select Field
+
+- **Height**: 36px
+- **Padding**: 6px 28px 6px 8px (space for arrow on the right)
+- **Border**: #E5E8EC
+- **Background Color**: White (#FFFFFF)
+- **Text Color**: #374151
+- **Arrow Color**: #5F6D7E
+
+### 5.4 Cards/Panels
+
+#### Node Card
+
+- **Background Color**: #F6F9FF
+- **Border**: #E5E8EC
+- **Shadow**: 0 1px 2px rgba(0,0,0,0.05) / Hover 0 2px 4px rgba(0,0,0,0.08)
+- **Padding**: 12px
+- **Border Radius**: 6px
+- **Margin**: Add 24px left margin per level
+
+#### Panel
+
+- **Background Color**: White (#FFFFFF)
+- **Border**: #E5E8EC
+- **Padding**: 16px
+- **Border Radius**: 0px (general panel) / 6px (floating panel)
+
+### 5.5 Special Elements
+
+#### Splitter
+
+- **Width**: 6px
+- **Background Color**: #E5E8EC
+- **Handle Height**: 30px
+- **Handle Color**: #CCCCCC / Hover #4B73FF
+
+#### Zoom Control
+
+- **Background Color**: White (#FFFFFF)
+- **Border**: None
+- **Shadow**: 0 2px 8px rgba(0, 0, 0, 0.1)
+- **Border Radius**: 6px
+- **Button Size**: 36px x 36px
+
+## 6. States and Interactions
+
+### 6.1 Element States
+
+| State    | Visual Change                     |
+| -------- | --------------------------------- |
+| Hover    | Background color change, shadow emphasis |
+| Focus    | Blue outline (#4B73FF)            |
+| Active   | Color change, visual marker (e.g., left line) |
+| Disabled | Opacity reduction (0.5)           |
+
+### 6.2 Animations
+
+- **Transition Time**: 0.2s - 0.3s
+- **Easing**: ease-in-out
+- **Applicable Elements**: Hover states, expand/collapse, element show/hide
+
+### 6.3 Feedback
+
+- **Button Click**: Slight press effect (scale 0.98)
+- **Save Complete**: Success message display (green)
+- **Error**: Error message display (red)
+- **Loading**: Progress indicator or spinner
+
+## 7. Responsive Design
+
+### 7.1 Breakpoints
+
+- **Small**: Below 768px
+- **Medium**: 768px - 1024px
+- **Large**: Above 1024px
+
+### 7.2 Responsive Behavior
+
+- **Sidebar**: Overlay mode on small screens
+- **Splitter**: Changes to vertical layout on small screens
+- **Toolbar**: Wraps to multiple lines on small screens
+- **Settings Panel**: Modal display on small screens
+
+## 8. Accessibility
+
+### 8.1 Color Contrast
+
+- Text always maintains WCAG AA standard (4.5:1) contrast ratio or higher.
+- Large text (18px and above) maintains a 3:1 contrast ratio or higher.
+
+### 8.2 Keyboard Navigation
+
+- All interactive elements are focusable via Tab key.
+- Focus state is always visually clear (blue outline).
+- Assign shortcut keys to important functions.
+
+### 8.3 ARIA Support
+
+- Use appropriate ARIA roles and attributes.
+- Provide alternative text for screen reader compatibility.
+- Appropriately notify changes in dynamic content.
+
+## 9. Implementation Guidelines
+
+### 9.1 CSS Variables
+
+```css
+:root {
+  /* Brand Core */
+  --color-primary: #2A4073;
+  --color-primary-hover: #39528A;
+  --color-accent-cta: #FFD700;
+  --color-accent-cta-hover: #E6C200;
+  --color-link: #4B73FF;
+  
+  /* Light Theme */
+  --color-bg-page: #FFFFFF;
+  --color-bg-surface: #F6F9FF;
+  --color-border: #E5E8EC;
+  --color-text-body: #374151;
+  --color-text-secondary: #5F6D7E;
+  
+  /* Semantic Colors */
+  --color-success: #22996E;
+  --color-danger: #E03E43;
+  --color-info: #1E90FF;
+  
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  
+  /* Border Radius */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md: 0 2px 4px rgba(0,0,0,0.08);
+  --shadow-lg: 0 2px 8px rgba(0,0,0,0.1);
+}
+```
+
+### 9.2 Class Naming Conventions and Styling Approach
+
+- This project utilizes Material-UI (MUI) for theming and component styling, and `styled-components` for global and potentially component-specific styles.
+- Instead of a strict CSS class naming convention (like BEM with a custom prefix), styling is primarily managed via:
+    - MUI component `sx` prop or `styled()` utility for component-level overrides and custom styles.
+    - Theme object (`src/theme/theme.ts`) for defining global palette, typography, breakpoints, etc.
+    - `styled-components` for creating styled React components.
+- When custom CSS classes are necessary, they should be descriptive and follow a consistent pattern, ideally scoped to the component or feature to avoid conflicts (e.g., using CSS Modules or `styled-components`' inherent scoping).
+
+### 9.3 File Structure (Styling)
+
+- **Global Theme Configuration**: `src/theme/theme.ts` (MUI theme definition)
+- **Global Styles**: `src/theme/globalStyles.ts` (using `styled-components` `createGlobalStyle`)
+- **Component-Specific Styles**:
+    - Co-located with the component (e.g., `MyComponent.styles.ts` if using `styled-components` extensively for that component).
+    - Defined directly within the component file using MUI's `sx` prop or `styled()` utility.
+- **Feature-Specific Styles**: Styles relevant to a whole feature can be organized within the feature's directory in `src/features/`.
+- **Utility/Helper CSS**: If utility classes are needed beyond Tailwind CSS (if used) or MUI's styling capabilities, they can be placed in a shared location like `src/styles/utils.css` or within `src/theme/`.
+
+```
+src/
+├── theme/
+│   ├── theme.ts         # MUI theme configuration
+│   └── globalStyles.ts  # Global styles via styled-components
+├── components/          # Reusable UI components
+│   └── MyComponent/
+│       ├── MyComponent.tsx
+│       └── (MyComponent.styles.ts) # Optional: if styled-components are complex
+├── features/            # Feature-based modules
+│   └── MyFeature/
+│       ├── components/
+│       ├── hooks/
+│       ├── MyFeaturePage.tsx
+│       └── (MyFeature.styles.ts) # Optional: feature-specific shared styles
+└── index.css            # Base global styles, Tailwind CSS imports (if used)
+```
+
+*Note: Tailwind CSS is mentioned in `temp.md` as part of the tech stack. If it's actively used, `index.css` or a similar entry point CSS file would be where Tailwind's base, components, and utilities are imported. MUI and `styled-components` would then work alongside or on top of Tailwind.*
+
+## 10. Page/Feature Specific Guidelines
+
+Each feature page has the following structure. Specific content varies by feature, but the layout structure is common.
+
+### 10.1 Common Layout
+
+```
++------------------+------------------------------------------+
+| Sidebar          | Header (Breadcrumbs + Actions)           |
+|                  +------------------------------------------+
+|                  | Content Title + Feature-specific Actions |
+|                  +------------------------------------------+
+|                  | Left Column       | Right Column           |
+|                  | (Input/Settings)  | (Preview/Results)    |
+|                  |                   |                        |
+|                  |                   |                        |
+|                  +------------------+----------------------+
+|                  | Common Settings Panel (Tab UI)           |
++------------------+------------------------------------------+
+```
+
+### 10.2 Flowchart Drawing Feature
+
+- **Left Column**: Tree input area + AI assist function
+- **Right Column**: Diagram preview + Zoom controls
+- **Settings Panel**: Style settings tab + Export tab
+
+### 10.3 Pareto Chart Creation Feature
+
+- **Left Column**: Data input/import
+- **Right Column**: Pareto chart preview
+- **Settings Panel**: Chart settings tab + Export tab
+
+### 10.4 Why-Why Analysis Feature
+
+- **Left Column**: Analysis tree
+- **Right Column**: Root cause analysis results
+- **Settings Panel**: AI settings tab + Report tab
+
+## Appendix: Helper Classes (CSS)
+
+```css
+/* Margin */
+.kh-m-0 { margin: 0; }
+.kh-m-xs { margin: 4px; }
+.kh-m-sm { margin: 8px; }
+.kh-m-md { margin: 16px; }
+.kh-m-lg { margin: 24px; }
+
+/* Padding */
+.kh-p-0 { padding: 0; }
+.kh-p-xs { padding: 4px; }
+.kh-p-sm { padding: 8px; }
+.kh-p-md { padding: 16px; }
+.kh-p-lg { padding: 24px; }
+
+/* Text Alignment */
+.kh-text-left { text-align: left; }
+.kh-text-center { text-align: center; }
+.kh-text-right { text-align: right; }
+
+/* Display/Visibility */
+.kh-hidden { display: none; }
+.kh-invisible { visibility: hidden; }
+
+/* Flexbox */
+.kh-flex { display: flex; }
+.kh-flex-col { flex-direction: column; }
+.kh-items-center { align-items: center; }
+.kh-justify-between { justify-content: space-between; }
+```

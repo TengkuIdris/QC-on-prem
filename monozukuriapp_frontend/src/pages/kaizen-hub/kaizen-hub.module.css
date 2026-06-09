@@ -1,0 +1,1918 @@
+:root {
+  --kzh-primary-color: #2563eb;
+  --kzh-primary-hover: #1d4ed8;
+  --kzh-success-color: #10b981;
+  --kzh-danger-color: #ef4444;
+  --kzh-warning-color: #f59e0b;
+  --kzh-gray-50: #f9fafb;
+  --kzh-gray-100: #f3f4f6;
+  --kzh-gray-200: #e5e7eb;
+  --kzh-gray-300: #d1d5db;
+  --kzh-gray-400: #9ca3af;
+  --kzh-gray-500: #6b7280;
+  --kzh-gray-600: #4b5563;
+  --kzh-gray-700: #374151;
+  --kzh-gray-800: #1f2937;
+  --kzh-gray-900: #111827;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "NotoSansJP", sans-serif;
+  background-color: var(--kzh-gray-50);
+  color: var(--kzh-gray-800);
+  line-height: 1.6;
+}
+
+input,
+select,
+textarea {
+  background: white;
+}
+
+button,
+input {
+  line-height: 18px;
+}
+
+/* Header */
+.header {
+  background-color: #004d0d;
+  border-bottom: 1px solid var(--kzh-gray-200);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.headerContent {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.headerTitle {
+  font-size: 20px;
+  font-weight: 700;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.headerTitle img {
+  height: 30px; /* ロゴの高さ */
+}
+
+.headerActions {
+  display: flex;
+  gap: 12px;
+}
+
+.headerActions .btnText.active {
+  color: var(--kzh-primary-color);
+  font-weight: 600;
+  border-bottom: 2px solid var(--kzh-primary-color);
+  padding-bottom: 14px; /* 境界線とテキストの間にスペース */
+}
+
+/* Main Container */
+/* Container Styles */
+.container {
+  margin: 0 auto;
+  padding: 32px 24px;
+  background-color: var(--kzh-gray-50);
+}
+
+.container.containerGrid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 32px;
+}
+
+.container.containerGridThree {
+  display: grid;
+  grid-template-columns: 1fr 350px;
+  gap: 32px;
+}
+
+/* Container Size */
+.container.containerLarge {
+  max-width: 1280px;
+}
+
+.container.containerMedium {
+  max-width: 1000px;
+}
+
+/* Search Section */
+.searchSection {
+  background-color: white;
+  border-radius: 12px;
+  padding: 32px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-bottom: 40px;
+  text-align: center;
+}
+
+.searchTitle {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--kzh-gray-900);
+  margin-bottom: 16px;
+}
+
+.searchDescription {
+  color: var(--kzh-gray-600);
+  font-size: 14px;
+  margin-bottom: 24px;
+}
+
+.searchBar {
+  display: flex;
+  align-items: center;
+  max-width: 700px;
+  margin: 0 auto;
+  border: 1px solid var(--kzh-gray-300);
+  border-radius: 8px;
+  overflow: hidden; /* 子要素の角丸を適用 */
+  background-color: white;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s;
+}
+
+.searchBar:focus-within {
+  border-color: var(--kzh-primary-color);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.searchIcon {
+  padding: 12px 16px;
+  color: var(--kzh-gray-500);
+  font-size: 20px;
+}
+
+.searchInput {
+  flex-grow: 1;
+  padding: 12px 0; /* 上下のパディング */
+  border: none;
+  outline: none;
+  font-size: 16px;
+  font-family: inherit;
+  color: var(--kzh-gray-800);
+}
+
+.searchInput::placeholder {
+  color: var(--kzh-gray-400);
+}
+
+.searchButton {
+  padding: 12px 24px;
+  background-color: var(--kzh-primary-color);
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.searchButton:hover {
+  background-color: var(--kzh-primary-hover);
+}
+
+/* Recipe List Section */
+.recipeListSection {
+  margin-top: 40px;
+}
+
+.recipeListTitle {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--kzh-gray-900);
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.recipeGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); /* カードの最小幅 */
+  gap: 24px;
+}
+
+.recipeCard {
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+}
+
+.recipeCard:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-4px);
+}
+
+.recipeCardImage {
+  width: 100%;
+  height: 180px; /* 画像の固定高さ */
+  object-fit: cover; /* 画像のアスペクト比を保ちつつ、カードを埋める */
+  background-color: var(--kzh-gray-100); /* 画像がない場合のプレースホルダー */
+}
+
+.recipeCardContent {
+  padding: 20px;
+  flex-grow: 1; /* コンテンツ部分を広げる */
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between; /* タイトルと詳細の間にスペース */
+}
+
+.recipeCardTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--kzh-gray-900);
+  margin-bottom: 12px;
+  display: -webkit-box;
+  -webkit-line-clamp: 1; /* タイトルを2行に制限 */
+  line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.recipeCardSummary {
+  font-size: 13px;
+  color: var(--kzh-gray-600);
+  margin-bottom: 16px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3; /* サマリーを3行に制限 */
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.recipeCardMeta {
+  font-size: 12px;
+  color: var(--kzh-gray-500);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto; /* メタ情報を一番下に配置 */
+}
+
+.recipeCardCategory {
+  background-color: var(--kzh-gray-100);
+  color: var(--kzh-gray-600);
+  padding: 4px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* Review Section */
+.reviewSection {
+  background-color: white;
+  border-radius: 12px;
+  padding: 32px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Recipe Detail Section */
+.recipeDetailSection {
+  background-color: white;
+  border-radius: 12px;
+  padding: 32px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.recipeHeaderActions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+  align-items: center;
+}
+
+.favoriteButton {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: var(--kzh-gray-400);
+  cursor: pointer;
+  padding: 0 8px;
+  transition: color 0.2s;
+}
+
+.favoriteButton.isFavorited {
+  color: var(--kzh-warning-color); /* お気に入り登録時の色 */
+}
+
+.recipeTitle {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--kzh-gray-900);
+  margin-bottom: 8px;
+}
+
+.recipeMeta {
+  font-size: 14px;
+  color: var(--kzh-gray-600);
+  margin-bottom: 24px;
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.recipeCategory {
+  background-color: var(--kzh-gray-100);
+  color: var(--kzh-gray-600);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-weight: 500;
+}
+
+.recipeImageContainer {
+  margin-bottom: 32px;
+  border-radius: 12px;
+  overflow: hidden; /* 画像の角丸を適用 */
+  background-color: var(--kzh-gray-100); /* 画像がない場合 */
+}
+
+.recipeImage {
+  width: 100%;
+  display: block; /* 画像下の余白をなくす */
+}
+
+.sectionTitle {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--kzh-gray-800);
+  padding-bottom: 8px;
+}
+
+.contentBlock {
+  margin-bottom: 32px;
+}
+
+.contentBlock p {
+  font-size: 14px;
+  color: var(--kzh-gray-600);
+  line-height: 1.8;
+  white-space: pre-wrap; /* 改行を維持 */
+}
+
+.contentBlock ul,
+.contentBlock ol {
+  font-size: 14px;
+  color: var(--kzh-gray-600);
+  margin-left: 20px;
+  line-height: 1.8;
+}
+
+.contentBlock li {
+  margin-bottom: 8px;
+}
+
+.tagsContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background-color: var(--kzh-gray-100);
+  color: var(--kzh-gray-700);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+}
+
+/* Before/After Data Preview */
+.dataPreviewContainer {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.dataCard {
+  background-color: var(--kzh-gray-50);
+  border: 1px solid var(--kzh-gray-200);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.dataCardHeader {
+  font-weight: 600;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dataRow {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: var(--kzh-gray-600);
+}
+
+.dataLabel {
+  font-weight: 500;
+}
+
+.dataValue {
+  color: var(--kzh-gray-800);
+}
+
+/* Chart Placeholder */
+.chartPlaceholder {
+  height: 150px;
+  background-color: var(--kzh-gray-100);
+  border: 1px dashed var(--kzh-gray-300);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--kzh-gray-400);
+  font-size: 16px;
+  margin-top: 12px;
+}
+
+/* Preview Image Container */
+.previewImageContainer {
+  height: auto;
+}
+
+.previewImagePlaceholder {
+  color: var(--kzh-gray-600);
+  padding: 8px;
+  margin-top: 0;
+}
+
+.reviewHeader {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 32px;
+  border-bottom: 1px solid var(--kzh-gray-200);
+  padding-bottom: 24px;
+}
+
+.reviewRecipeImage {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 8px;
+  flex-shrink: 0; /* 画像が縮まないように */
+}
+
+.reviewRecipeInfo {
+  flex-grow: 1;
+}
+
+.reviewRecipeTitle {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--kzh-gray-900);
+  margin-bottom: 4px;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.reviewRecipeCategory {
+  font-size: 13px;
+  color: var(--kzh-gray-600);
+  background-color: var(--kzh-gray-100);
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-weight: 500;
+}
+
+.ratingInputGroup {
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.ratingLabel {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--kzh-gray-800);
+}
+
+.starRating {
+  display: flex;
+  align-items: center;
+  gap: 4px; /* 星の間隔 */
+}
+
+.star {
+  font-size: 32px; /* 星のサイズ */
+  color: var(--kzh-gray-300); /* 未選択時の色 */
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.star.filled {
+  color: var(--kzh-warning-color); /* 選択時の色 */
+}
+
+/* Comment Section */
+.commentSection {
+  margin-bottom: 32px;
+}
+
+.commentTextarea {
+  width: 100%;
+  min-height: 150px;
+  padding: 16px;
+  border: 1px solid var(--kzh-gray-300);
+  border-radius: 8px;
+  font-size: 15px;
+  font-family: inherit;
+  resize: vertical;
+  transition: all 0.2s;
+}
+
+.commentTextarea:focus {
+  outline: none;
+  border-color: var(--kzh-primary-color);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.commentCharCount {
+  text-align: right;
+  font-size: 13px;
+  color: var(--kzh-gray-500);
+  margin-top: 8px;
+}
+
+/* KaiZEN-specific Review Elements */
+.kaizenReviewSection {
+  margin-top: 40px;
+  padding-top: 32px;
+  border-top: 1px solid var(--kzh-gray-200);
+}
+
+.kaizenReviewTitle {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--kzh-gray-800);
+  margin-bottom: 16px;
+}
+
+.checkboxGroup label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: var(--kzh-gray-700);
+  cursor: pointer;
+}
+
+.checkboxGroup input[type="checkbox"] {
+  appearance: none; /* デフォルトのチェックボックスを非表示 */
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--kzh-gray-300);
+  border-radius: 4px;
+  background-color: white;
+  transition: all 0.2s;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.checkboxGroup input[type="checkbox"]:checked {
+  background-color: var(--kzh-primary-color);
+  border-color: var(--kzh-primary-color);
+}
+
+.checkboxGroup input[type="checkbox"]:checked::after {
+  content: "✓"; /* チェックマーク */
+  font-size: 14px;
+  color: white;
+}
+
+/* Action Buttons */
+.actionButtons {
+  margin-top: 40px;
+  padding-top: 32px;
+  border-top: 1px solid var(--kzh-gray-200);
+  text-align: right; /* ボタンを右寄せ */
+}
+
+.btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btnDisabled {
+  background-color: var(--kzh-gray-300);
+  color: white;
+  cursor: not-allowed;
+}
+
+.btnPrimary {
+  background-color: var(--kzh-primary-color);
+  color: white;
+}
+
+.btnPrimary:hover {
+  background-color: var(--kzh-primary-hover);
+}
+
+.btnSecondary {
+  background-color: white;
+  color: var(--kzh-gray-700);
+  border: 1px solid var(--kzh-gray-300);
+}
+
+.btnSecondary:hover {
+  background-color: var(--kzh-gray-50);
+}
+
+/* Footer */
+.footer {
+  background-color: #004d0d;
+  color: var(--kzh-gray-300);
+  padding: 24px 0;
+  margin-top: 40px;
+}
+
+.footerContent {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+}
+
+.footerLinks a {
+  color: var(--kzh-gray-300);
+  text-decoration: none;
+  margin-left: 24px;
+  transition: color 0.2s;
+}
+
+.footerLinks a:hover {
+  color: white;
+}
+
+/* Form Label */
+.formLabel {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--kzh-gray-800);
+  margin-bottom: 8px;
+  display: block;
+}
+
+.optional {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--kzh-gray-500);
+  margin-left: 8px;
+}
+
+/* Button Text Style */
+.btnText {
+  background: none;
+  color: var(--kzh-gray-700);
+  border: none;
+  padding: 8px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.btnText:hover {
+  color: var(--kzh-primary-color);
+}
+
+/* Sidebar */
+.sidebarCard {
+  background-color: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+
+.sidebarHeader {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sidebarContent ul {
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--kzh-gray-600);
+  padding-left: 20px;
+}
+
+.sidebarContent li {
+  margin-bottom: 6px;
+}
+
+.sidebarContent p {
+  font-size: 14px;
+  color: var(--kzh-gray-600);
+  margin-bottom: 8px;
+}
+
+.sidebarContent a {
+  color: var(--kzh-primary-color);
+  text-decoration: none;
+}
+
+/* Tab Navigation */
+.tabNav {
+  border-bottom: 2px solid var(--kzh-primary-color);
+  margin-bottom: 32px;
+}
+
+.tabNavList {
+  display: flex;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.tabNavItem {
+  margin-right: 24px;
+}
+
+.tabNavLink {
+  display: inline-block;
+  padding: 16px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--kzh-gray-600);
+  text-decoration: none;
+  transition: all 0.3s;
+  position: relative;
+  cursor: pointer; /* Clickable indication */
+}
+
+.tabNavLink.active {
+  color: var(--kzh-primary-color);
+  border-bottom: 2px solid var(--kzh-primary-color);
+}
+
+.tabNavLink:hover {
+  color: var(--kzh-primary-color);
+}
+
+/* User Info Section */
+.userInfoSection {
+  background-color: white;
+  border-radius: 12px;
+  padding: 32px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Form Elements */
+.formGroup {
+  margin-bottom: 24px;
+}
+
+.formInput {
+  width: 100%;
+  padding: 10px 16px;
+  border: 1px solid var(--kzh-gray-300);
+  border-radius: 8px;
+  font-size: 15px;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.formInput:focus {
+  outline: none;
+  border-color: var(--kzh-primary-color);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.formInputError {
+  border-color: var(--kzh-danger-color);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.formInputDisabled,
+.formSelectDisabled {
+  background-color: var(--kzh-gray-100);
+}
+
+.formSelectDisabled select {
+  background-color: var(--kzh-gray-100);
+}
+
+.formSelectError {
+  outline-color: var(--kzh-danger-color);
+  outline-width: 1px;
+  outline-style: solid;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.formError {
+  color: var(--kzh-danger-color);
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+/* Save Button */
+.saveButton {
+  display: flex;
+  justify-content: flex-end; /* ボタンを右寄せ */
+  margin-top: 32px;
+}
+
+.btnSave {
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  background-color: var(--kzh-primary-color);
+  color: white;
+  border: none;
+}
+
+.btnSave:hover {
+  background-color: var(--kzh-primary-hover);
+}
+
+/* Confirmation/Completion Styles */
+.confirmationContainer {
+  background-color: white;
+  border-radius: 16px;
+  padding: 40px 32px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  max-width: 500px;
+  width: 100%;
+  border: 1px solid var(--kzh-gray-200);
+}
+
+.confirmationIconArea {
+  margin-bottom: 24px;
+}
+
+.confirmationIcon {
+  font-size: 72px; /* アイコンサイズを調整 */
+  color: var(--kzh-success-color); /* 成功を示す緑色 */
+  display: inline-block; /* 中央揃えのため */
+}
+
+.confirmationTitle {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--kzh-gray-800);
+  margin-bottom: 16px;
+}
+
+.confirmationDescription {
+  font-size: 16px;
+  color: var(--kzh-gray-600);
+  margin-bottom: 32px;
+}
+
+.btnClose {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  background-color: var(--kzh-primary-color); /* メインカラーを使用 */
+  color: white;
+  border: none;
+  width: 100%; /* ボタンを横幅いっぱいに */
+  max-width: 250px; /* 最大幅を設定 */
+}
+
+.btnClose:hover {
+  background-color: var(--kzh-primary-hover);
+}
+
+.confirmationFooterInfo {
+  margin-top: 40px;
+  font-size: 13px;
+  color: var(--kzh-gray-500);
+  text-align: center;
+}
+
+.confirmationFooterInfo a {
+  color: var(--kzh-gray-500);
+  text-decoration: underline;
+  transition: color 0.2s;
+}
+
+.confirmationFooterInfo a:hover {
+  color: var(--kzh-gray-700);
+}
+
+/* Full Height Body for Completion Pages */
+body.completionPage {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh; /* 画面全体の高さを確保 */
+  padding: 20px;
+}
+
+/* Progress Bar */
+.progressContainer {
+  background-color: white;
+  border-bottom: 1px solid var(--kzh-gray-200);
+  padding: 20px 0;
+}
+
+.progressWrapper {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.progressSteps {
+  display: flex;
+  justify-content: space-between;
+  position: relative;
+}
+
+.progressLine {
+  position: absolute;
+  top: 20px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: var(--kzh-gray-200);
+  z-index: 0;
+}
+
+.progressLineActive {
+  background-color: var(--kzh-primary-color);
+  transition: width 0.3s ease;
+}
+
+.progressStep {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+}
+
+.progressCircle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: white;
+  border: 2px solid var(--kzh-gray-300);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  transition: all 0.3s;
+}
+
+.progressStep.active .progressCircle {
+  background-color: var(--kzh-primary-color);
+  border-color: var(--kzh-primary-color);
+  color: white;
+}
+
+.progressStep.completed .progressCircle {
+  background-color: var(--kzh-success-color);
+  border-color: var(--kzh-success-color);
+  color: white;
+}
+
+.progressLabel {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--kzh-gray-600);
+  font-weight: 500;
+}
+
+.progressStep.active .progressLabel {
+  color: var(--kzh-primary-color);
+  font-weight: 600;
+}
+
+/* Preview Section */
+.confirmPost .previewSection {
+  background-color: white;
+  border-radius: 12px;
+  padding: 32px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.confirmPost .previewTitle {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--kzh-gray-900);
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.confirmPost .previewContent {
+  margin-bottom: 32px;
+}
+
+.confirmPost .previewSectionTitle {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--kzh-gray-800);
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--kzh-gray-200);
+}
+
+.confirmPost .previewItem {
+  margin-bottom: 20px;
+}
+
+.confirmPost .previewItemTitle {
+  font-weight: 600;
+  color: var(--kzh-gray-700);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.confirmPost .previewItemValue {
+  color: var(--kzh-gray-600);
+  font-size: 14px;
+  white-space: pre-wrap; /* 改行を維持 */
+}
+
+.confirmPost .previewItemImageContainer {
+  margin-top: 12px;
+}
+
+.confirmPost .previewImage {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
+/* Preview Tags */
+.confirmPost .previewTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.confirmPost .previewTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background-color: var(--kzh-gray-100);
+  color: var(--kzh-gray-700);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+}
+
+/* Step Builder Preview */
+.stepBuilderPreviewItem {
+  background-color: var(--kzh-gray-50);
+  border: 1px solid var(--kzh-gray-200);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.stepBuilderPreviewHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.stepNumberLargePreview {
+  width: 30px;
+  height: 30px;
+  background-color: var(--kzh-primary-color);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.stepTitlePreview {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--kzh-gray-800);
+}
+
+.stepDescriptionPreview {
+  font-size: 14px;
+  color: var(--kzh-gray-600);
+  margin-top: 8px;
+  white-space: pre-wrap;
+}
+
+/* Preview Chart */
+.previewChart {
+  height: 150px;
+  background-color: var(--kzh-gray-100);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--kzh-gray-400);
+  text-align: center;
+  margin-top: 12px;
+}
+
+/* Before After Container */
+.beforeAfterContainer {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 12px 0;
+}
+
+/* Metric Input Group */
+.metricInputGroup {
+  background-color: var(--kzh-gray-50);
+  border: 1px solid var(--kzh-gray-200);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.metricHeader {
+  font-weight: 600;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Time Estimate */
+.timeEstimate {
+  background-color: #fef3c7;
+  border: 1px solid #fbbf24;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.timeEstimateIcon {
+  font-size: 24px;
+}
+
+.timeEstimateContent {
+  flex-grow: 1;
+}
+
+.timeEstimateTitle {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+/* Form Actions */
+.formActions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--kzh-gray-200);
+}
+
+/* Help Tip */
+.helpTip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  background-color: var(--kzh-gray-200);
+  color: var(--kzh-gray-600);
+  border-radius: 50%;
+  font-size: 12px;
+  cursor: help;
+}
+
+/* Form Section */
+.formSection {
+  background-color: white;
+  border-radius: 12px;
+  padding: 32px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Form Elements Extended */
+.required {
+  color: var(--kzh-danger-color);
+  font-size: 12px;
+}
+
+.formTextarea {
+  resize: vertical;
+  min-height: 120px;
+  width: 100%;
+  padding: 10px 16px;
+  border: 1px solid var(--kzh-gray-300);
+  border-radius: 8px;
+  font-size: 15px;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.formSelect {
+  width: 100%;
+  padding: 10px 16px;
+  border: 1px solid var(--kzh-gray-300);
+  border-radius: 8px;
+  font-size: 15px;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.formInput:focus,
+.formTextarea:focus,
+.formSelect:focus {
+  outline: none;
+  border-color: var(--kzh-primary-color);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.formHint {
+  font-size: 13px;
+  color: var(--kzh-gray-500);
+  margin-top: 6px;
+}
+
+.charCount {
+  text-align: right;
+  font-size: 12px;
+  color: var(--kzh-gray-500);
+  margin-top: 4px;
+}
+
+/* Metric Input */
+.metricRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr 14px 28px;
+  column-gap: 8px;
+  margin-bottom: 8px;
+  align-items: center;
+}
+
+.metricInput {
+  flex: 1;
+  padding: 6px 12px;
+  border: 1px solid var(--kzh-gray-300);
+  border-radius: 6px;
+  font-size: 14px;
+  width: 140px;
+}
+
+.metricUnit {
+  font-size: 14px;
+  color: var(--kzh-gray-600);
+}
+
+.addMetricBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  color: var(--kzh-primary-color);
+  font-size: 14px;
+  cursor: pointer;
+  border: 1px dashed var(--kzh-primary-color);
+  border-radius: 6px;
+  background-color: transparent;
+  transition: all 0.2s;
+}
+
+.addMetricBtn:hover {
+  background-color: var(--kzh-gray-50);
+}
+
+.removeMetricBtn {
+  background: none;
+  border: none;
+  color: var(--kzh-danger-color);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  min-width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.removeMetricBtn:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+/* File Upload */
+.fileUploadArea {
+  border: 2px dashed var(--kzh-gray-300);
+  border-radius: 8px;
+  padding: 32px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background-color: var(--kzh-gray-50);
+}
+
+.fileUploadArea:hover {
+  border-color: var(--kzh-primary-color);
+  background-color: rgba(37, 99, 235, 0.05);
+}
+
+.fileUploadArea.dragging {
+  border-color: var(--kzh-primary-color);
+  background-color: rgba(37, 99, 235, 0.1);
+}
+
+.uploadIcon {
+  font-size: 48px;
+  color: var(--kzh-gray-400);
+  margin-bottom: 12px;
+}
+
+.uploadText {
+  color: var(--kzh-gray-600);
+  font-size: 14px;
+}
+
+.uploadHint {
+  color: var(--kzh-gray-500);
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.uploadedFiles {
+  border: 1px solid var(--kzh-gray-200);
+  border-radius: 8px;
+  padding: 12px;
+  background-color: white;
+}
+
+.uploadedFile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background-color: var(--kzh-gray-50);
+  margin-bottom: 8px;
+}
+
+.uploadedFile:last-child {
+  margin-bottom: 0;
+}
+
+.fileName {
+  font-size: 14px;
+  color: var(--kzh-gray-700);
+  flex: 1;
+}
+
+.fileSize {
+  font-size: 12px;
+  color: var(--kzh-gray-500);
+  margin-left: 8px;
+}
+
+.removeFileBtn {
+  background: none;
+  border: none;
+  color: var(--kzh-danger-color);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 8px;
+  margin-left: 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.removeFileBtn:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+.dragActive {
+  border-color: var(--kzh-primary-color) !important;
+  background-color: rgba(37, 99, 235, 0.1) !important;
+}
+
+/* Preview Section Extended */
+.previewSection {
+  position: sticky;
+  top: 100px;
+  height: fit-content;
+}
+
+.previewCard {
+  background-color: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+
+.previewHeader {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.previewContent {
+  font-size: 14px;
+  color: var(--kzh-gray-600);
+}
+
+/* Tag Input */
+.tagInputContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--kzh-gray-300);
+  border-radius: 8px;
+  align-items: center;
+  min-height: 44px;
+}
+
+.tagInput {
+  border: none;
+  outline: none;
+  flex: 1;
+  min-width: 120px;
+  font-size: 14px;
+  padding: 4px;
+}
+
+.tagRemove {
+  margin-left: 6px;
+  color: var(--kzh-gray-500);
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.tagRemove:hover {
+  color: var(--kzh-danger-color);
+}
+
+/* Step Builder */
+.stepBuilder {
+  margin-bottom: 32px;
+}
+
+.stepBuilderItem {
+  background-color: var(--kzh-gray-50);
+  border: 1px solid var(--kzh-gray-200);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 16px;
+  position: relative;
+}
+
+.stepBuilderHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.stepNumberLarge {
+  width: 36px;
+  height: 36px;
+  background-color: var(--kzh-primary-color);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.stepActions {
+  display: flex;
+  gap: 8px;
+}
+
+.stepActionBtn {
+  padding: 6px;
+  background-color: transparent;
+  border: none;
+  color: var(--kzh-gray-500);
+  cursor: pointer;
+  font-size: 20px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.stepActionBtn:hover {
+  background-color: var(--kzh-gray-200);
+  color: var(--kzh-gray-700);
+}
+
+.dragHandle {
+  cursor: move;
+}
+
+/* Tips Section */
+.tipsContainer {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.tipCard {
+  background-color: var(--kzh-gray-50);
+  border: 1px solid var(--kzh-gray-200);
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.tipHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: var(--kzh-gray-700);
+}
+
+.tipIcon {
+  font-size: 24px;
+}
+
+/* Add Step Button */
+.addStepBtn {
+  width: 100%;
+  padding: 16px;
+  border: 2px dashed var(--kzh-gray-300);
+  border-radius: 8px;
+  background-color: transparent;
+  color: var(--kzh-gray-600);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.addStepBtn:hover {
+  border-color: var(--kzh-primary-color);
+  color: var(--kzh-primary-color);
+  background-color: rgba(37, 99, 235, 0.05);
+}
+
+/* Time Estimate Extended */
+.timeEstimateContent {
+  flex: 1;
+}
+
+.timeInputs {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.timeInput {
+  width: 80px;
+  padding: 6px 12px;
+  border: 1px solid var(--kzh-gray-300);
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+/* File Upload Area within Step Builder */
+.fileUploadAreaStep {
+  border: 2px dashed var(--kzh-gray-300);
+  border-radius: 8px;
+  padding: 20px; /* Padding adjustment for step context */
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background-color: var(--kzh-gray-50);
+  margin-top: 16px; /* Space from previous element */
+}
+
+.fileUploadAreaStep:hover {
+  border-color: var(--kzh-primary-color);
+  background-color: rgba(37, 99, 235, 0.05);
+}
+
+.fileUploadAreaStep.dragging {
+  border-color: var(--kzh-primary-color);
+  background-color: rgba(37, 99, 235, 0.1);
+}
+
+.uploadIconStep {
+  font-size: 36px; /* Slightly smaller icon */
+  color: var(--kzh-gray-400);
+  margin-bottom: 8px;
+}
+
+.uploadTextStep {
+  color: var(--kzh-gray-600);
+  font-size: 13px;
+}
+
+.uploadHintStep {
+  color: var(--kzh-gray-500);
+  font-size: 11px;
+  margin-top: 4px;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .container {
+    grid-template-columns: 1fr; /* 1カラムにする */
+  }
+  .container.containerGridThree {
+    grid-template-columns: 1fr;
+  }
+  .reviewHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .reviewRecipeImage {
+    width: 60px;
+    height: 60px;
+  }
+  .reviewRecipeTitle {
+    font-size: 20px;
+  }
+  .ratingInputGroup {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .star {
+    font-size: 28px;
+  }
+  .actionButtons {
+    text-align: center;
+  }
+  .checkboxGroup label {
+    font-size: 13px;
+  }
+  .recipeHeaderActions {
+    justify-content: center;
+    margin-bottom: 24px;
+  }
+  .actionButtons {
+    flex-direction: column;
+    gap: 16px;
+  }
+  .previewSection {
+    position: relative;
+    top: 0;
+  }
+  .beforeAfterContainer {
+    grid-template-columns: 1fr;
+  }
+  .metricInput {
+    width: 100%;
+  }
+  .tipsContainer {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .headerContent {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .headerActions {
+    margin-top: 16px;
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .headerActions .btn {
+    margin-bottom: 8px; /* ボタン間の間隔 */
+  }
+  .headerActions .btnText.active {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+  .searchBar {
+    flex-direction: column;
+    max-width: 100%;
+  }
+  .searchIcon,
+  .searchButton {
+    padding: 12px;
+  }
+  .searchInput {
+    width: calc(100% - 24px); /* 両側のパディングを考慮 */
+  }
+  .recipeGrid {
+    grid-template-columns: 1fr; /* レスポンシブで1カラムにする */
+  }
+  .footerContent {
+    flex-direction: column;
+    text-align: center;
+  }
+  .footerLinks {
+    margin-top: 12px;
+  }
+  .footerLinks a {
+    margin: 0 8px;
+  }
+  .tabNavList {
+    overflow-x: auto;
+    white-space: nowrap;
+    padding-bottom: 10px; /* Scrollbar space */
+  }
+  .tabNavLink {
+    margin-right: 16px; /* Adjust spacing for smaller screens */
+  }
+  .tabNavLink.active {
+    border-bottom: 2px solid var(--kzh-primary-color); /* Ensure underline is visible */
+  }
+  .saveButton {
+    justify-content: center; /* Center button on small screens */
+  }
+  .progressWrapper {
+    overflow-x: auto;
+    white-space: nowrap;
+    padding-bottom: 10px; /* Scrollbar space */
+  }
+  .progressSteps {
+    min-width: 600px; /* Ensure steps don't shrink too much */
+  }
+  .progressStep {
+    flex-shrink: 0; /* Prevent steps from shrinking */
+  }
+  .formActions {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 16px;
+  }
+  .formActions > div {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .beforeAfterContainer {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+/* Additional ConfirmPost styles */
+.sectionDescription {
+  color: var(--kzh-gray-600);
+  margin-bottom: 24px;
+  font-size: 14px;
+}
+
+.helpTip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  background-color: var(--kzh-gray-400);
+  color: white;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: bold;
+  cursor: help;
+}
+
+.metricInputGroup {
+  background-color: var(--kzh-gray-50);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.metricHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: var(--kzh-gray-800);
+}
+
+.metricRow {
+  margin-bottom: 8px;
+}
+
+.metricRow:last-child {
+  margin-bottom: 0;
+}
+
+.timeEstimate {
+  background-color: #fef3c7;
+  border: 1px solid #fbbf24;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.timeEstimateIcon {
+  font-size: 20px;
+}
+
+.timeEstimateContent {
+  flex: 1;
+}
+
+.timeEstimateTitle {
+  font-weight: 600;
+  color: var(--kzh-gray-800);
+  margin-bottom: 4px;
+}
+
+.previewImagePlaceholder {
+  background-color: var(--kzh-gray-100);
+  border: 2px dashed var(--kzh-gray-300);
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+  color: var(--kzh-gray-500);
+  font-size: 14px;
+}
+
+.noImage {
+  text-align: center;
+  width: 100%;
+  height: 180px;
+  color: var(--kzh-gray-600);
+  background-color: var(--kzh-gray-300);
+  font-size: 14px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.errorText {
+  color: var(--color-danger);
+}

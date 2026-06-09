@@ -1,0 +1,12 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+file_count=$(git diff --cached --name-only | wc -l)
+
+# checked if number of file is exceed the threshold
+if [ "$file_count" -gt 10 ]; then
+  echo "The number of changed files exceeds the limit. Please commit less than 10 files."
+  exit 1
+fi
+
+yarn lint && yarn test

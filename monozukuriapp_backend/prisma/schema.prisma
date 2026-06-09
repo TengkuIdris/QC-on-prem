@@ -1,0 +1,703 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                         Int                       @id @default(autoincrement())
+  email                      String                    @unique
+  name                       String                    @db.VarChar(255)
+  createdAt                  DateTime                  @default(now())
+  updatedAt                  DateTime                  @updatedAt
+  isConfirmed                Boolean                   @default(false)
+  company                    String?                   @db.VarChar(255)
+  department                 String?                   @db.VarChar(255)
+  indenty                    String?                   @db.VarChar(255)
+  affiliation                String                    @db.VarChar(255)
+  cognito_user_id            String?                   @unique
+  company_id                 Int
+  deleted_at                 DateTime?
+  full_name                  String                    @db.VarChar(255)
+  is_active                  Boolean?                  @default(true)
+  last_login_at              DateTime?
+  trial_ends_at              DateTime?
+  user_type                  String                    @db.VarChar(50)
+  trial_expiry_email_sent_at DateTime?
+  start_date                 DateTime?                 @db.Date
+  end_date                   DateTime?                 @db.Date
+  fta                        FTA[]
+  favorites                  Favorite[]
+  Feedback                   Feedback[]
+  fishBone                   FishBone[]
+  fishBoneAssistant          FishBoneAssistant[]
+  fishBoneAssistantReviews   FishBoneAssistantReview[]
+  improvement                Improvement[]
+  likes                      Like[]
+  pareto                     Parento[]
+  RecentFiles                RecentFiles[]
+  reviews                    Review[]
+  company_relation           Company                   @relation(fields: [company_id], references: [id], onDelete: SetNull)
+  userPlans                  UserPlan[]
+  analysisSessions           AnalysisSession[]
+  audit_logs                 AuditLog[]
+  user_login_histories       UserLoginHistory[]
+  notificationReads          NotificationRead[]
+
+  @@map("User")
+}
+
+model Improvement {
+  id                         Int                   @id @default(autoincrement())
+  userId                     Int
+  title                      String?               @db.VarChar(255)
+  description                String?               @db.VarChar(2550)
+  type                       TypeImprovementEnum?
+  situationBeforeImprovement String?               @db.VarChar(2550)
+  situationAfterImprovement  String?               @db.VarChar(2550)
+  improvementProcedures      String?               @db.VarChar(2550)
+  tipsAndTricks              String?               @db.VarChar(2550)
+  afterImage                 String?               @db.VarChar(255)
+  beforeImage                String?               @db.VarChar(255)
+  createdAt                  DateTime              @default(now())
+  updatedAt                  DateTime              @updatedAt
+  isDraft                    Boolean?
+  views                      Int                   @default(0)
+  categoriesId               Int?
+  caution                    String?
+  company                    String?               @db.VarChar(255)
+  department                 String?               @db.VarChar(255)
+  email                      String?               @db.VarChar(255)
+  execDays                   Int?
+  fullName                   String?               @db.VarChar(255)
+  prepDays                   Int?
+  summary                    String?
+  tips                       String?
+  favorites                  Favorite[]
+  implementationSteps        ImplementationSteps[]
+  categories                 Categories?           @relation(fields: [categoriesId], references: [id])
+  user                       User                  @relation(fields: [userId], references: [id])
+  labels                     LabelAndImprovement[]
+  likes                      Like[]
+  metrics                    Metrics[]
+  relatedDocuments           RelatedDocuments[]
+  reviews                    Review[]
+
+  @@index([createdAt])
+  @@index([title, createdAt])
+  @@map("Improvement")
+}
+
+model Categories {
+  id           Int           @id @default(autoincrement())
+  name         String        @db.VarChar(255)
+  description  String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  improvements Improvement[]
+
+  @@map("Categories")
+}
+
+model Metrics {
+  id            Int          @id @default(autoincrement())
+  improvementId Int?
+  label         String       @db.VarChar(255)
+  value         Float
+  type          MetricsEnum
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  improvement   Improvement? @relation(fields: [improvementId], references: [id])
+
+  @@map("Metrics")
+}
+
+model RelatedDocuments {
+  id            Int          @id @default(autoincrement())
+  improvementId Int?
+  name          String       @db.VarChar(255)
+  url           String       @db.VarChar(255)
+  size          Int
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  improvement   Improvement? @relation(fields: [improvementId], references: [id])
+
+  @@map("RelatedDocuments")
+}
+
+model ImplementationSteps {
+  id            Int          @id @default(autoincrement())
+  improvementId Int?
+  stepNumber    Int
+  title         String       @db.VarChar(255)
+  description   String?
+  url           String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  improvement   Improvement? @relation(fields: [improvementId], references: [id])
+
+  @@map("ImplementationSteps")
+}
+
+model Label {
+  id           Int                   @id @default(autoincrement())
+  title        String                @db.VarChar(255)
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  improvements LabelAndImprovement[]
+
+  @@map("Label")
+}
+
+model LabelAndImprovement {
+  labelId       Int
+  improvementId Int
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  improvement   Improvement @relation(fields: [improvementId], references: [id])
+  label         Label       @relation(fields: [labelId], references: [id])
+
+  @@id([labelId, improvementId])
+  @@index([improvementId])
+  @@index([labelId])
+  @@map("LabelAndImprovement")
+}
+
+model Review {
+  id            Int         @id @default(autoincrement())
+  userId        Int
+  improvementId Int
+  rate          Float?
+  comment       String?     @db.VarChar(2550)
+  impactPercent Float?
+  attraction    Json?
+  howUse        HowUse?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  keyword       String?     @db.VarChar(2550)
+  improvement   Improvement @relation(fields: [improvementId], references: [id])
+  user          User        @relation(fields: [userId], references: [id])
+
+  @@map("Review")
+}
+
+model Favorite {
+  improvementId Int
+  userId        Int
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  improvement   Improvement @relation(fields: [improvementId], references: [id])
+  user          User        @relation(fields: [userId], references: [id])
+
+  @@id([improvementId, userId])
+  @@index([improvementId])
+  @@index([userId])
+  @@map("Favorite")
+}
+
+model Like {
+  improvementId Int
+  userId        Int
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  improvement   Improvement @relation(fields: [improvementId], references: [id])
+  user          User        @relation(fields: [userId], references: [id])
+
+  @@id([improvementId, userId])
+  @@index([improvementId])
+  @@index([userId])
+  @@map("Like")
+}
+
+model Parento {
+  id           Int           @id @default(autoincrement())
+  name         String        @db.VarChar(255)
+  afterId      Int?          @unique
+  beforeId     Int?          @unique
+  singleId     Int?          @unique
+  userId       Int
+  mode         ParetoMode    @default(SINGLE)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  afterPareto  ParetoRecord? @relation("afterParetoRelation", fields: [afterId], references: [id])
+  beforePareto ParetoRecord? @relation("beforeParetoRelation", fields: [beforeId], references: [id])
+  singlePareto ParetoRecord? @relation("singleParetoRelation", fields: [singleId], references: [id])
+  user         User          @relation(fields: [userId], references: [id])
+  RecentFiles  RecentFiles[]
+
+  @@map("Parento")
+}
+
+model ParetoRecord {
+  id                     Int          @id @default(autoincrement())
+  title                  String       @db.VarChar(255)
+  yAxisLabel             String       @db.VarChar(255)
+  yAxisUnits             String       @db.VarChar(255)
+  otherColor             String       @db.VarChar(255)
+  lineChartColor         String       @db.VarChar(255)
+  labelOrientation       Orientation  @default(portrait)
+  yAxisLabelOrientation  Orientation  @default(portrait)
+  lineLabelOrientation   Orientation  @default(portrait)
+  columnLabelOrientation Orientation  @default(portrait)
+  xAxisItemCount         Int
+  lineThickness          Float
+  xAxisFontSize          Int
+  yAxisFontSize          Int
+  lineLabelFontSize      Int
+  columnLabelFontSize    Int
+  axisFontSize           Int
+  fontFamily             String       @db.VarChar(255)
+  showBarLabels          Boolean      @default(false)
+  showLineLabels         Boolean      @default(false)
+  startTime              DateTime?
+  endTime                DateTime?
+  createdTime            DateTime?
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
+  image                  String       @db.VarChar(255)
+  size                   Float        @default(0)
+  fontSizeTitle          Int          @default(0)
+  scale                  Int          @default(0)
+  yAxisUnitSize          Int          @default(12)
+  paretoAfter            Parento?     @relation("afterParetoRelation")
+  paretoBefore           Parento?     @relation("beforeParetoRelation")
+  paretoSingle           Parento?     @relation("singleParetoRelation")
+  paretoItem             ParetoItem[]
+
+  @@map("ParetoRecord")
+}
+
+model ParetoItem {
+  id                   Int          @id @default(autoincrement())
+  name                 String       @db.VarChar(255)
+  quantity             Int
+  cumulativeQuantity   Int
+  cumulativePercentage Float
+  color                String       @db.VarChar(255)
+  showLineLabel        Boolean
+  showBarLabel         Boolean
+  paretoId             Int
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+  pareto               ParetoRecord @relation(fields: [paretoId], references: [id], onDelete: Cascade)
+
+  @@map("ParetoItem")
+}
+
+model FishBone {
+  id                 Int                 @id @default(autoincrement())
+  fontFamily         String?             @default("JTC") @db.VarChar(255)
+  parameters         Json
+  userId             Int
+  image              String              @db.VarChar(255)
+  size               Float               @default(0)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  firstLevelFontSize Int?
+  otherLevelFontSize Int?
+  rootFontSize       Int?
+  aiAssistantId      Int?
+  source             FishBoneSource      @default(MANUAL)
+  aiAssistant        FishBoneAssistant?  @relation("AIGeneratedFishbones", fields: [aiAssistantId], references: [id])
+  user               User                @relation(fields: [userId], references: [id])
+  fishBoneAssistants FishBoneAssistant[]
+  RecentFiles        RecentFiles[]
+
+  @@map("FishBone")
+}
+
+model Plan {
+  id                      Int          @id @default(autoincrement())
+  type                    String?      @db.VarChar(255)
+  name                    String       @db.VarChar(255)
+  isActive                Boolean      @default(true)
+  createdAt               DateTime     @default(now())
+  updatedAt               DateTime     @updatedAt
+  api_call_limit          Int?
+  usage_limit_mb          Int?
+  parento                 Boolean?     @default(true)
+  fishbone                Boolean?     @default(true)
+  whywhy                  Boolean?     @default(true)
+  kaizenhub_main_screen   Boolean?     @default(true)
+  kaizenhub_post_and_view Boolean?     @default(true)
+  planDetails             PlanDetail[]
+  userPlans               UserPlan[]
+  contracts               Contract[]
+
+  @@map("Plan")
+}
+
+model Action {
+  id          Int          @id @default(autoincrement())
+  type        ActionEnum
+  name        String?      @db.VarChar(255)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  planDetails PlanDetail[]
+
+  @@map("Action")
+}
+
+model PlanDetail {
+  id           Int      @id @default(autoincrement())
+  planId       Int
+  actionId     Int
+  enableFlag   Boolean?
+  limitedUsage Int?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  action       Action   @relation(fields: [actionId], references: [id])
+  plan         Plan     @relation(fields: [planId], references: [id])
+
+  @@map("PlanDetail")
+}
+
+model UserPlan {
+  id              Int      @id @default(autoincrement())
+  userId          Int
+  planId          Int
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  api_call_limit  Int?
+  storage_size_gb Int?
+  plan            Plan     @relation(fields: [planId], references: [id])
+  user            User     @relation(fields: [userId], references: [id])
+
+  @@map("UserPlan")
+}
+
+model FTA {
+  id          Int           @id @default(autoincrement())
+  fontFamily  String?       @default("JTC") @db.VarChar(255)
+  parameters  Json
+  userId      Int
+  image       String        @db.VarChar(255)
+  size        Float         @default(0)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  user        User          @relation(fields: [userId], references: [id])
+  RecentFiles RecentFiles[]
+
+  @@map("FTA")
+}
+
+model FishBoneAssistant {
+  id                 Int                       @id @default(autoincrement())
+  userId             Int
+  problem            String?
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+  diagrams           Json                      @default("{}")
+  month              Int
+  numberNode         Int
+  response           Json?
+  year               Int
+  fishBoneId         Int?
+  tokens             Int?
+  language           String?                   @default("en")
+  generatedFishbones FishBone[]                @relation("AIGeneratedFishbones")
+  fishBone           FishBone?                 @relation(fields: [fishBoneId], references: [id])
+  user               User                      @relation(fields: [userId], references: [id])
+  reviews            FishBoneAssistantReview[]
+
+  @@map("FishBoneAssistant")
+}
+
+model FishBoneAssistantReview {
+  id                  Int               @id @default(autoincrement())
+  fishBoneAssistantId Int
+  userId              Int
+  review              ReviewType
+  reason              String?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  fishBoneAssistant   FishBoneAssistant @relation(fields: [fishBoneAssistantId], references: [id])
+  user                User              @relation(fields: [userId], references: [id])
+
+  @@map("FishBoneAssistantReview")
+}
+
+model Company {
+  id            Int       @id @default(autoincrement())
+  company_name  String?
+  company_code  String?   @unique
+  contact_email String?
+  created_at    DateTime? @default(now())
+  updated_at    DateTime? @updatedAt
+  is_active     Boolean?  @default(true)
+  users         User[]
+  api_keys      ApiKey[]
+  contract      Contract?
+
+  @@map("companies")
+}
+
+model Contract {
+  id                 Int               @id @default(autoincrement())
+  company_id         Int?              @unique
+  plan_id            Int?
+  monthly_fee        Decimal?
+  start_date         DateTime?         @db.Date
+  end_date           DateTime?         @db.Date
+  status             String?
+  created_at         DateTime?         @default(now())
+  updated_at         DateTime?         @updatedAt
+  contract_histories ContractHistory[]
+  company            Company?          @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  plan               Plan?             @relation(fields: [plan_id], references: [id])
+
+  @@map("contracts")
+}
+
+model ContractHistory {
+  id          Int       @id @default(autoincrement())
+  contract_id Int?
+  created_at  DateTime? @default(now())
+  contract    Contract? @relation(fields: [contract_id], references: [id], onDelete: Cascade)
+
+  @@map("contract_histories")
+}
+
+model UserLoginHistory {
+  id         Int       @id @default(autoincrement())
+  user_id    Int?
+  login_time DateTime? @default(now())
+  ip_address String?
+  user       User?     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("user_login_histories")
+}
+
+model AuditLog {
+  id             Int       @id @default(autoincrement())
+  user_id        Int?
+  admin_id       Int?
+  action_type    String?
+  action_details Json?
+  ip_address     String?
+  created_at     DateTime? @default(now())
+  user           User?     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("audit_logs_partitioned")
+}
+
+model Administrator {
+  id                Int              @id @default(autoincrement())
+  email             String?
+  full_name         String?
+  created_at        DateTime?        @default(now())
+  admin_action_logs AdminActionLog[]
+
+  @@map("administrators")
+}
+
+model AdminActionLog {
+  id             Int            @id @default(autoincrement())
+  admin_id       Int?
+  action_type    String?
+  action_details Json?
+  created_at     DateTime?      @default(now())
+  administrator  Administrator? @relation(fields: [admin_id], references: [id], onDelete: Cascade)
+
+  @@map("admin_action_logs")
+}
+
+model ApiKey {
+  id         Int       @id @default(autoincrement())
+  company_id Int?
+  api_key    String?
+  created_at DateTime? @default(now())
+  company    Company?  @relation(fields: [company_id], references: [id], onDelete: Cascade)
+
+  @@map("api_keys")
+}
+
+model RecentFiles {
+  id         Int       @id @default(autoincrement())
+  userId     Int
+  fishBoneId Int?
+  ftaId      Int?
+  parentoId  Int?
+  recentlyAt DateTime  @default(now())
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  fishBone   FishBone? @relation(fields: [fishBoneId], references: [id])
+  fta        FTA?      @relation(fields: [ftaId], references: [id])
+  parento    Parento?  @relation(fields: [parentoId], references: [id])
+  user       User      @relation(fields: [userId], references: [id])
+
+  @@unique([userId, fishBoneId, ftaId, parentoId])
+}
+
+model EmailTemplate {
+  id        Int      @id @default(autoincrement())
+  type      String   @unique
+  subject   String
+  body      String
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+}
+
+model Feedback {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  feedbacks Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@map("Feedback")
+}
+
+model AnalysisSession {
+  id             String            @id @default(cuid())
+  title          String            @db.VarChar(500)
+  ownerId        Int
+  participants   Int[]
+  status         String            @default("in_progress") @db.VarChar(50)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  analysisData   Json?             @default("{}")
+  childrenCount  Int               @default(0)
+  parentId       String?
+  note           String?
+  noteUpdatedAt  DateTime?
+  noteUpdatedBy  Int?
+  firstAnswer    String?           @map("first_answer") @db.VarChar(2000)
+  publicScope    PublicScopeEnum?  @default(private) @map("public_scope")
+  hideAuthorName Boolean?          @default(false) @map("hide_author_name")
+  requiresVisibilityConfig Boolean? @default(false) @map("requires_visibility_config")
+  owner          User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  parent         AnalysisSession?  @relation("ParentChild", fields: [parentId], references: [id], onDelete: Cascade)
+  children       AnalysisSession[] @relation("ParentChild")
+
+  @@index([parentId])
+  @@index([publicScope, status])
+  @@map("analysis_sessions")
+}
+
+model Notification {
+  id          Int                @id @default(autoincrement())
+  title       String             @db.VarChar(500)
+  body        String             @db.Text
+  tag         String             @db.VarChar(100)
+  status      String             @default("published") @db.VarChar(50)
+  created_at  DateTime           @default(now())
+  updated_at  DateTime           @updatedAt
+  published_at DateTime?
+  created_by  Int?
+  reads       NotificationRead[]
+
+  @@map("notifications")
+}
+
+model NotificationRead {
+  id              Int          @id @default(autoincrement())
+  notification_id Int
+  user_id         Int
+  read_at         DateTime     @default(now())
+  notification    Notification @relation(fields: [notification_id], references: [id], onDelete: Cascade)
+  user            User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([notification_id, user_id])
+  @@map("notification_reads")
+}
+
+model Prices {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique @db.VarChar(255)
+  price     Decimal  @db.Decimal(10, 2)
+  currency  String   @db.VarChar(10)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("Prices")
+}
+
+enum PublicScopeEnum {
+  private
+  company
+  group
+}
+
+enum IndustryEnum {
+  MANUFACTURING
+  SERVICES
+  RETAIL
+  OTHER
+}
+
+enum TypeImprovementEnum {
+  FIVES
+  KANBAN
+  IMPROVE
+  TPM
+  LEAN_MANUFACTURING_SYSTEM
+}
+
+enum Orientation {
+  portrait
+  vertical
+}
+
+enum ParetoMode {
+  SINGLE
+  AFTER
+  BEFORE
+  COMPARE
+}
+
+enum ActionEnum {
+  LANDING_PAGE
+  PARENTO_CREATE_PAGE
+  PARENTO_SAVE_AS_CSV
+  PARENTO_SAVE_TYPED_DATA
+  PARENTO_CHOOSE_FONT_TEXT
+  PARENTO_CHOOSE_SIZE_TEXT
+  PARENTO_CHOOSE_COLOR_TEXT
+  FISHBONE_CREATE_PAGE
+  FISHBONE_SAVE_AS_CSV
+  FISHBONE_SAVE_TYPED_DATA
+  FISHBONE_AI_TEST
+  FTA_CREATE_PAGE
+  FTA_SAVE_AS_CSV
+  FTA_SAVE_TYPED_DATA
+  FTA_AI_TEST
+  WHYWHY_CREATE_PAGE
+  WHYWHY_DOWNLOAD_TEMPLATE_FILE
+  KAIZENHUB_MAIN_SCREEN
+  KAIZENHUB_POST_AND_VIEW
+  PARENTO_DOWNLOAD_IMAGE
+  FISHBONE_DOWNLOAD_IMAGE
+  FISHBONE_CHOOSE_FONT_TEXT
+  FISHBONE_CHOOSE_FONT_SIZE
+  FTA_DOWNLOAD_IMAGE
+  FTA_CHOOSE_FONT_TEXT
+  FTA_CHOOSE_FONT_SIZE
+}
+
+enum HowUse {
+  REFERENCE
+  SOME
+  ALL
+  NOT_USE
+}
+
+enum ReviewType {
+  GOOD
+  BAD
+}
+
+enum MetricsEnum {
+  BEFORE
+  AFTER
+}
+
+enum FishBoneSource {
+  MANUAL
+  AI_GENERATED
+}

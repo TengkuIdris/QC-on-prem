@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "ParetoRecord" ADD COLUMN     "size" DOUBLE PRECISION NOT NULL DEFAULT 0;

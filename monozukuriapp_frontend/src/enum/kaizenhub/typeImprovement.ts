@@ -1,0 +1,7 @@
+export enum TypeImprovement {
+  FIVES = "FIVES",
+  KANBAN = "KANBAN",
+  IMPROVE = "IMPROVE",
+  LEAN_MANUFACTURING_SYSTEM = "LEAN_MANUFACTURING_SYSTEM",
+  TPM = "TPM",
+}

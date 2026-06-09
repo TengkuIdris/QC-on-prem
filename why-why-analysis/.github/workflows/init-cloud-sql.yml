@@ -1,0 +1,563 @@
+name: Initialize Cloud SQL Schema via Cloud Run Job
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - stg
+          - prod
+  push:
+    paths:
+      - '.github/workflows/init-cloud-sql.yml'
+      - 'why_why_chat_ai/agent/engine.py'
+      - 'scripts/cloud-sql-init-ci.py'
+
+env:
+  # 環境変数を動的に設定（pushイベントの場合はdev環境をデフォルトに）
+  ENVIRONMENT: ${{ github.event.inputs.environment || 'dev' }}
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  CLOUD_SQL_REGION: asia-northeast1
+  CHECKPOINT_SCHEMA: whywhy
+
+jobs:
+  init-via-cloud-run-job:
+    name: Initialize Cloud SQL via Cloud Run Job
+    runs-on: ubuntu-latest
+    # push時はdev、workflow_dispatch時は選択された環境
+    environment: ${{ github.event_name == 'push' && 'dev' || github.event.inputs.environment }}
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set environment variables
+      run: |
+        # 環境に応じた変数を設定
+        case "${{ env.ENVIRONMENT }}" in
+          dev)
+            echo "CLOUD_SQL_INSTANCE=why-why-chat-ai-db-dev" >> $GITHUB_ENV
+            echo "CLOUD_SQL_DATABASE=why_why_chat_ai_dev" >> $GITHUB_ENV
+            echo "SERVICE_ACCOUNT_PREFIX=app-sa-dev" >> $GITHUB_ENV
+            echo "VPC_CONNECTOR_NAME=cloud-run-connector-dev" >> $GITHUB_ENV
+            echo "JOB_NAME=init-cloud-sql-schema-dev" >> $GITHUB_ENV
+            ;;
+          stg)
+            echo "CLOUD_SQL_INSTANCE=why-why-chat-ai-db-stg" >> $GITHUB_ENV
+            echo "CLOUD_SQL_DATABASE=why_why_chat_ai_stg" >> $GITHUB_ENV
+            echo "SERVICE_ACCOUNT_PREFIX=app-sa-stg" >> $GITHUB_ENV
+            echo "VPC_CONNECTOR_NAME=cloud-run-connector-stg" >> $GITHUB_ENV
+            echo "JOB_NAME=init-cloud-sql-schema-stg" >> $GITHUB_ENV
+            ;;
+          prod)
+            echo "CLOUD_SQL_INSTANCE=why-why-chat-ai-db-prod" >> $GITHUB_ENV
+            echo "CLOUD_SQL_DATABASE=why_why_chat_ai_prod" >> $GITHUB_ENV
+            echo "SERVICE_ACCOUNT_PREFIX=app-sa-prod" >> $GITHUB_ENV
+            echo "VPC_CONNECTOR_NAME=cloud-run-connector-prod" >> $GITHUB_ENV
+            echo "JOB_NAME=init-cloud-sql-schema-prod" >> $GITHUB_ENV
+            ;;
+        esac
+
+    - name: Set IAM user
+      run: |
+        # SERVICE_ACCOUNT_PREFIX が設定された後に実行
+        echo "CLOUD_SQL_IAM_USER=${{ env.SERVICE_ACCOUNT_PREFIX }}@${{ env.GCP_PROJECT_ID }}.iam" >> $GITHUB_ENV
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+        service_account: ${{ secrets.CICD_SERVICE_ACCOUNT }}
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+
+    - name: Set unique Python image
+      id: build-image
+      run: |
+        # Use a unique identifier to force new image pull
+        UNIQUE_ID="${{ github.sha }}-$(date +%s)"
+        echo "unique_id=${UNIQUE_ID}" >> $GITHUB_OUTPUT
+
+        # We'll use the standard Python image but with unique environment variable
+        echo "image_uri=python:3.12-slim" >> $GITHUB_OUTPUT
+        echo "Using Python image with unique ID: ${UNIQUE_ID}"
+
+    - name: Create IAM User in Cloud SQL
+      run: |
+        # サービスアカウントのメールアドレス（.gserviceaccount.com サフィックスなし）
+        SERVICE_ACCOUNT_EMAIL="${{ env.SERVICE_ACCOUNT_PREFIX }}@${{ env.GCP_PROJECT_ID }}"
+
+        # IAMユーザーが既に存在するか確認（データベース内での表現は .iam サフィックス付き）
+        IAM_USER_IN_DB="${{ env.SERVICE_ACCOUNT_PREFIX }}@${{ env.GCP_PROJECT_ID }}.iam"
+
+        echo "Checking if IAM user exists: ${IAM_USER_IN_DB}"
+        if ! gcloud sql users list \
+          --instance=${{ env.CLOUD_SQL_INSTANCE }} \
+          --project=${{ env.GCP_PROJECT_ID }} \
+          --format="value(name)" | grep -q "^${IAM_USER_IN_DB}$"; then
+
+          echo "Creating IAM service account user in Cloud SQL..."
+          echo "Service account email (without .gserviceaccount.com): ${SERVICE_ACCOUNT_EMAIL}"
+
+          # gcloud sql users create には .gserviceaccount.com を除いたメールアドレスを使用
+          gcloud sql users create "${SERVICE_ACCOUNT_EMAIL}" \
+            --instance=${{ env.CLOUD_SQL_INSTANCE }} \
+            --type=cloud_iam_service_account \
+            --project=${{ env.GCP_PROJECT_ID }}
+
+          echo "IAM user created successfully"
+        else
+          echo "IAM user ${IAM_USER_IN_DB} already exists"
+        fi
+
+    - name: Create or Update Cloud Run Job
+      run: |
+        SERVICE_ACCOUNT="${{ env.SERVICE_ACCOUNT_PREFIX }}@${{ env.GCP_PROJECT_ID }}.iam.gserviceaccount.com"
+        VPC_CONNECTOR="projects/${{ env.GCP_PROJECT_ID }}/locations/${{ env.CLOUD_SQL_REGION }}/connectors/${{ env.VPC_CONNECTOR_NAME }}"
+
+        # Read the Python script and encode it as base64
+        INIT_SCRIPT_B64=$(cat scripts/cloud-sql-init-hybrid.py | base64 -w 0)
+
+        # Always delete and recreate to ensure fresh deployment
+        # Use shorter unique ID to stay under 63 character limit
+        SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-8)
+        TIMESTAMP=$(date +%s)
+        JOB_NAME_WITH_ID="${{ env.JOB_NAME }}-${SHORT_SHA}-${TIMESTAMP}"
+
+        # Delete all old versions of the job
+        for job in $(gcloud run jobs list --region=${{ env.CLOUD_SQL_REGION }} --project=${{ env.GCP_PROJECT_ID }} --format="value(name)" | grep "^${{ env.JOB_NAME }}-"); do
+          echo "Deleting old job: ${job}"
+          gcloud run jobs delete ${job} \
+            --region=${{ env.CLOUD_SQL_REGION }} \
+            --project=${{ env.GCP_PROJECT_ID }} \
+            --quiet || true
+        done
+
+        echo "Creating new Cloud Run Job with unique ID: ${JOB_NAME_WITH_ID}"
+        # Create new job with Python script as environment variable
+        gcloud run jobs create ${JOB_NAME_WITH_ID} \
+          --image=${{ steps.build-image.outputs.image_uri }} \
+          --region=${{ env.CLOUD_SQL_REGION }} \
+          --project=${{ env.GCP_PROJECT_ID }} \
+          --service-account=${SERVICE_ACCOUNT} \
+          --set-env-vars="INIT_MODE=true" \
+          --set-env-vars="GCP_PROJECT_ID=${{ env.GCP_PROJECT_ID }}" \
+          --set-env-vars="CLOUD_SQL_INSTANCE=${{ env.CLOUD_SQL_INSTANCE }}" \
+          --set-env-vars="CLOUD_SQL_DATABASE=${{ env.CLOUD_SQL_DATABASE }}" \
+          --set-env-vars="CLOUD_SQL_REGION=${{ env.CLOUD_SQL_REGION }}" \
+          --set-env-vars="USE_CLOUD_SQL=true" \
+          --set-env-vars="CHECKPOINT_SCHEMA=${{ env.CHECKPOINT_SCHEMA }}" \
+          --set-env-vars="SERVICE_ACCOUNT_PREFIX=${{ env.SERVICE_ACCOUNT_PREFIX }}" \
+          --set-env-vars="WORKSPACE=${{ env.ENVIRONMENT }}" \
+          --set-env-vars="SCRIPT_VERSION=${{ steps.build-image.outputs.unique_id }}" \
+          --set-env-vars="PYTHON_SCRIPT_B64=${INIT_SCRIPT_B64}" \
+          --set-secrets="POSTGRES_PASSWORD=postgres-password-${{ env.ENVIRONMENT }}:latest" \
+          --vpc-connector=${VPC_CONNECTOR} \
+          --set-cloudsql-instances="${{ env.GCP_PROJECT_ID }}:${{ env.CLOUD_SQL_REGION }}:${{ env.CLOUD_SQL_INSTANCE }}" \
+          --command="sh" \
+          --args="-c" \
+          --args="python -m pip install asyncpg google-cloud-secret-manager && python -c \"import os; import base64; exec(base64.b64decode(os.environ['PYTHON_SCRIPT_B64']).decode('utf-8'))\"" \
+          --max-retries=3 \
+          --parallelism=1 \
+          --task-timeout=300 \
+          --memory=512Mi \
+          --cpu=1
+
+        # Store the job name for execution
+        echo "JOB_NAME_WITH_ID=${JOB_NAME_WITH_ID}" >> $GITHUB_ENV
+
+    - name: Execute Cloud Run Job
+      id: execute-job
+      run: |
+        echo "Executing Cloud Run Job: ${{ env.JOB_NAME_WITH_ID }}..."
+
+        # Execute the job and capture the execution name
+        set +e  # Temporarily disable exit on error to capture output
+        EXECUTION_OUTPUT=$(gcloud run jobs execute ${{ env.JOB_NAME_WITH_ID }} \
+          --region=${{ env.CLOUD_SQL_REGION }} \
+          --project=${{ env.GCP_PROJECT_ID }} \
+          --wait 2>&1)
+        EXECUTION_EXIT_CODE=$?
+        set -e  # Re-enable exit on error
+
+        echo "$EXECUTION_OUTPUT"
+
+        # Extract execution name from output
+        EXECUTION_NAME=$(echo "$EXECUTION_OUTPUT" | grep -oP '(?<=Execution \[)[^]]+(?=\] has)' || echo "")
+        echo "execution_name=${EXECUTION_NAME}" >> $GITHUB_OUTPUT
+
+        # Check if execution was successful
+        if [ $EXECUTION_EXIT_CODE -ne 0 ]; then
+          echo "❌ Cloud Run Job execution failed with exit code: $EXECUTION_EXIT_CODE"
+          exit 1
+        fi
+
+        # Also check if the output contains error indicators
+        if echo "$EXECUTION_OUTPUT" | grep -q "failed\|error\|Error\|Failed"; then
+          echo "❌ Cloud Run Job execution completed but reported errors"
+          exit 1
+        fi
+
+        echo "✅ Cloud Run Job executed successfully"
+
+    - name: Check Job Execution Status
+      run: |
+        # Get detailed execution information
+        if [ -n "${{ steps.execute-job.outputs.execution_name }}" ]; then
+          echo "Getting execution details for: ${{ steps.execute-job.outputs.execution_name }}"
+          EXECUTION_DETAILS=$(gcloud run jobs executions describe ${{ steps.execute-job.outputs.execution_name }} \
+            --region=${{ env.CLOUD_SQL_REGION }} \
+            --project=${{ env.GCP_PROJECT_ID }} \
+            --format=json)
+          
+          echo "$EXECUTION_DETAILS"
+          
+          # Check if the execution completed successfully
+          # Cloud Run Jobs use "Completed" condition, not "Succeeded"
+          COMPLETED=$(echo "$EXECUTION_DETAILS" | jq -r '.status.conditions[] | select(.type=="Completed") | .status')
+          
+          # Also check if there's a failure count
+          FAILED_COUNT=$(echo "$EXECUTION_DETAILS" | jq -r '.status.failedCount // 0')
+          SUCCEEDED_COUNT=$(echo "$EXECUTION_DETAILS" | jq -r '.status.succeededCount // 0')
+          
+          if [ "$COMPLETED" != "True" ] || [ "$FAILED_COUNT" -gt 0 ]; then
+            echo "❌ Cloud Run Job execution did not complete successfully"
+            echo "Completed: $COMPLETED, Failed tasks: $FAILED_COUNT, Succeeded tasks: $SUCCEEDED_COUNT"
+            echo "Full status:"
+            echo "$EXECUTION_DETAILS" | jq '.status'
+            exit 1
+          fi
+          
+          echo "✅ Cloud Run Job execution completed successfully (Succeeded tasks: $SUCCEEDED_COUNT)"
+        else
+          echo "❌ No execution name found - job likely failed to start"
+          exit 1
+        fi
+
+    - name: View Job Logs
+      if: always()
+      run: |
+        echo "Fetching execution logs..."
+
+        # Get logs from the execution (use the most recent job matching the pattern)
+        RECENT_JOB=$(gcloud run jobs list --region=${{ env.CLOUD_SQL_REGION }} --project=${{ env.GCP_PROJECT_ID }} --format="value(name)" | grep "^${{ env.JOB_NAME }}-" | head -1)
+        if [ -n "${RECENT_JOB}" ]; then
+          echo "Fetching logs for job: ${RECENT_JOB}"
+          gcloud logging read \
+            "resource.type=cloud_run_job AND resource.labels.job_name=${RECENT_JOB} AND resource.labels.location=${{ env.CLOUD_SQL_REGION }}" \
+            --project=${{ env.GCP_PROJECT_ID }} \
+            --limit=100 \
+            --format="table(timestamp, severity, textPayload)" \
+            --order=asc
+        else
+          echo "No job found matching pattern: ${{ env.JOB_NAME }}-*"
+        fi
+
+    - name: Alternative - Simple Python Job
+      if: failure() && !contains(steps.execute-job.outputs.execution_name, 'init-cloud-sql-schema')
+      run: |
+        echo "Creating simple initialization job as fallback..."
+
+        # Delete existing simple job if it exists to ensure clean state
+        if gcloud run jobs describe ${{ env.JOB_NAME }}-simple \
+          --region=${{ env.CLOUD_SQL_REGION }} \
+          --project=${{ env.GCP_PROJECT_ID }} 2>/dev/null; then
+          echo "Deleting existing simple job to ensure clean state..."
+          gcloud run jobs delete ${{ env.JOB_NAME }}-simple \
+            --region=${{ env.CLOUD_SQL_REGION }} \
+            --project=${{ env.GCP_PROJECT_ID }} \
+            --quiet || true
+        fi
+
+        # Always create a new simple job
+        echo "Creating new simple job..."
+        gcloud run jobs create ${{ env.JOB_NAME }}-simple \
+            --image=python:3.12-slim \
+            --region=${{ env.CLOUD_SQL_REGION }} \
+            --project=${{ env.GCP_PROJECT_ID }} \
+            --service-account=${{ env.SERVICE_ACCOUNT_PREFIX }}@${{ env.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
+            --set-env-vars="PGHOST=/cloudsql/${{ env.GCP_PROJECT_ID }}:${{ env.CLOUD_SQL_REGION }}:${{ env.CLOUD_SQL_INSTANCE }}" \
+            --set-env-vars="PGUSER=postgres" \
+            --set-env-vars="PGDATABASE=${{ env.CLOUD_SQL_DATABASE }}" \
+            --set-secrets="PGPASSWORD=postgres-password-${{ env.ENVIRONMENT }}:latest" \
+            --vpc-connector=projects/${{ env.GCP_PROJECT_ID }}/locations/${{ env.CLOUD_SQL_REGION }}/connectors/${{ env.VPC_CONNECTOR_NAME }} \
+            --set-cloudsql-instances="${{ env.GCP_PROJECT_ID }}:${{ env.CLOUD_SQL_REGION }}:${{ env.CLOUD_SQL_INSTANCE }}" \
+            --command="python" \
+            --args="-c" \
+            --args="import os; print(f'Testing connection to {os.environ.get(\\\"PGHOST\\\")}'); import subprocess; subprocess.run(['apt-get', 'update', '-qq']); subprocess.run(['apt-get', 'install', '-y', '-qq', 'postgresql-client']); result = subprocess.run(['psql', '-c', 'SELECT version()'], capture_output=True, text=True); print(result.stdout); print('Connection successful!')" \
+            --max-retries=1 \
+            --task-timeout=300
+
+        # Execute the simple job with error handling
+        set +e  # Temporarily disable exit on error
+        SIMPLE_JOB_OUTPUT=$(gcloud run jobs execute ${{ env.JOB_NAME }}-simple \
+          --region=${{ env.CLOUD_SQL_REGION }} \
+          --project=${{ env.GCP_PROJECT_ID }} \
+          --wait 2>&1)
+        SIMPLE_JOB_EXIT_CODE=$?
+        set -e  # Re-enable exit on error
+
+        echo "$SIMPLE_JOB_OUTPUT"
+
+        if [ $SIMPLE_JOB_EXIT_CODE -ne 0 ]; then
+          echo "❌ Simple fallback job also failed with exit code: $SIMPLE_JOB_EXIT_CODE"
+          exit 1
+        fi
+
+        echo "✅ Simple fallback job executed successfully"
+
+    - name: Verify Schema Creation
+      run: |
+        echo "Verifying schema creation..."
+
+        # List databases to confirm connection
+        gcloud sql databases list \
+          --instance=${{ env.CLOUD_SQL_INSTANCE }} \
+          --project=${{ env.GCP_PROJECT_ID }}
+
+        # Get instance details
+        gcloud sql instances describe ${{ env.CLOUD_SQL_INSTANCE }} \
+          --project=${{ env.GCP_PROJECT_ID }} \
+          --format="yaml(state,backendType,ipAddresses)"
+
+    - name: Verify Schema with SQL Query
+      continue-on-error: true
+      run: |
+        echo "Running detailed schema verification..."
+        
+        # Encode the verification script
+        VERIFY_SCRIPT_B64=$(cat scripts/verify-schema.py | base64 -w 0)
+        
+        # Create a verification job
+        SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-8)
+        VERIFY_JOB_NAME="verify-schema-dev-${SHORT_SHA}"
+        
+        # Delete old verification jobs including the current one
+        echo "Cleaning up old verification jobs..."
+        for job in $(gcloud run jobs list --region=${{ env.CLOUD_SQL_REGION }} --project=${{ env.GCP_PROJECT_ID }} --format="value(name)" | grep "^verify-schema-dev-" || true); do
+          echo "Deleting job: ${job}"
+          gcloud run jobs delete ${job} \
+            --region=${{ env.CLOUD_SQL_REGION }} \
+            --project=${{ env.GCP_PROJECT_ID }} \
+            --quiet || true
+        done
+        
+        # Also specifically delete the job we're about to create
+        gcloud run jobs delete ${VERIFY_JOB_NAME} \
+          --region=${{ env.CLOUD_SQL_REGION }} \
+          --project=${{ env.GCP_PROJECT_ID }} \
+          --quiet || true
+        
+        # Create and execute the verification job
+        SERVICE_ACCOUNT="${{ env.SERVICE_ACCOUNT_PREFIX }}@${{ env.GCP_PROJECT_ID }}.iam.gserviceaccount.com"
+        VPC_CONNECTOR="projects/${{ env.GCP_PROJECT_ID }}/locations/${{ env.CLOUD_SQL_REGION }}/connectors/${{ env.VPC_CONNECTOR_NAME }}"
+        
+        gcloud run jobs create ${VERIFY_JOB_NAME} \
+          --image=python:3.12-slim \
+          --region=${{ env.CLOUD_SQL_REGION }} \
+          --project=${{ env.GCP_PROJECT_ID }} \
+          --service-account=${SERVICE_ACCOUNT} \
+          --set-env-vars="GCP_PROJECT_ID=${{ env.GCP_PROJECT_ID }}" \
+          --set-env-vars="WORKSPACE=${{ env.ENVIRONMENT }}" \
+          --set-env-vars="CLOUD_SQL_REGION=${{ env.CLOUD_SQL_REGION }}" \
+          --set-env-vars="PYTHON_SCRIPT_B64=${VERIFY_SCRIPT_B64}" \
+          --set-secrets="POSTGRES_PASSWORD=postgres-password-${{ env.ENVIRONMENT }}:latest" \
+          --vpc-connector=${VPC_CONNECTOR} \
+          --set-cloudsql-instances="${{ env.GCP_PROJECT_ID }}:${{ env.CLOUD_SQL_REGION }}:${{ env.CLOUD_SQL_INSTANCE }}" \
+          --command="sh" \
+          --args="-c" \
+          --args="python -m pip install asyncpg && python -c \"import os; import base64; exec(base64.b64decode(os.environ['PYTHON_SCRIPT_B64']).decode('utf-8'))\"" \
+          --max-retries=0 \
+          --parallelism=1 \
+          --task-timeout=120
+        
+        # Execute the job
+        gcloud run jobs execute ${VERIFY_JOB_NAME} \
+          --region=${{ env.CLOUD_SQL_REGION }} \
+          --project=${{ env.GCP_PROJECT_ID }} \
+          --wait || echo "Verification failed"
+        
+        # Get the logs
+        echo "Fetching verification logs..."
+        gcloud logging read \
+          "resource.type=cloud_run_job AND resource.labels.job_name=${VERIFY_JOB_NAME} AND resource.labels.location=${{ env.CLOUD_SQL_REGION }}" \
+          --project=${{ env.GCP_PROJECT_ID }} \
+          --limit=100 \
+          --format="table(timestamp, severity, textPayload)" \
+          --order=asc
+
+    - name: Initialize LangGraph Tables
+      continue-on-error: true
+      run: |
+        echo "Initializing LangGraph checkpoint tables..."
+        
+        # Encode the LangGraph initialization script
+        LANGGRAPH_SCRIPT_B64=$(cat scripts/direct-langgraph-init.py | base64 -w 0)
+        
+        # Create a test job
+        SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-8)
+        LANGGRAPH_JOB_NAME="langgraph-init-dev-${SHORT_SHA}"
+        
+        # Delete old test jobs including the current one
+        echo "Cleaning up old LangGraph initialization jobs..."
+        for job in $(gcloud run jobs list --region=${{ env.CLOUD_SQL_REGION }} --project=${{ env.GCP_PROJECT_ID }} --format="value(name)" | grep "^langgraph-init-dev-" || true); do
+          echo "Deleting job: ${job}"
+          gcloud run jobs delete ${job} \
+            --region=${{ env.CLOUD_SQL_REGION }} \
+            --project=${{ env.GCP_PROJECT_ID }} \
+            --quiet || true
+        done
+        
+        # Also specifically delete the job we're about to create
+        gcloud run jobs delete ${LANGGRAPH_JOB_NAME} \
+          --region=${{ env.CLOUD_SQL_REGION }} \
+          --project=${{ env.GCP_PROJECT_ID }} \
+          --quiet || true
+        
+        # Create and execute the LangGraph initialization job
+        SERVICE_ACCOUNT="${{ env.SERVICE_ACCOUNT_PREFIX }}@${{ env.GCP_PROJECT_ID }}.iam.gserviceaccount.com"
+        VPC_CONNECTOR="projects/${{ env.GCP_PROJECT_ID }}/locations/${{ env.CLOUD_SQL_REGION }}/connectors/${{ env.VPC_CONNECTOR_NAME }}"
+        
+        # Use the same image as the Cloud Run service
+        CURRENT_IMAGE=$(gcloud run services describe why-why-chat-ai-${{ env.ENVIRONMENT }} \
+          --region=${{ env.CLOUD_SQL_REGION }} \
+          --project=${{ env.GCP_PROJECT_ID }} \
+          --format="value(spec.template.spec.containers[0].image)" || echo "")
+        
+        if [ -z "$CURRENT_IMAGE" ]; then
+          echo "❌ Could not find current Cloud Run service image, using python:3.12-slim as fallback"
+          CURRENT_IMAGE="python:3.12-slim"
+        else
+          echo "✅ Using current Cloud Run service image: $CURRENT_IMAGE"
+        fi
+        
+        gcloud run jobs create ${LANGGRAPH_JOB_NAME} \
+          --image=${CURRENT_IMAGE} \
+          --region=${{ env.CLOUD_SQL_REGION }} \
+          --project=${{ env.GCP_PROJECT_ID }} \
+          --service-account=${SERVICE_ACCOUNT} \
+          --set-env-vars="GCP_PROJECT_ID=${{ env.GCP_PROJECT_ID }}" \
+          --set-env-vars="WORKSPACE=${{ env.ENVIRONMENT }}" \
+          --set-env-vars="CLOUD_SQL_REGION=${{ env.CLOUD_SQL_REGION }}" \
+          --set-env-vars="CHECKPOINT_SCHEMA=${{ env.CHECKPOINT_SCHEMA }}" \
+          --set-env-vars="PYTHON_SCRIPT_B64=${LANGGRAPH_SCRIPT_B64}" \
+          --set-env-vars="CURRENT_IMAGE=${CURRENT_IMAGE}" \
+          --set-secrets="POSTGRES_PASSWORD=postgres-password-${{ env.ENVIRONMENT }}:latest" \
+          --vpc-connector=${VPC_CONNECTOR} \
+          --set-cloudsql-instances="${{ env.GCP_PROJECT_ID }}:${{ env.CLOUD_SQL_REGION }}:${{ env.CLOUD_SQL_INSTANCE }}" \
+          --command="sh" \
+          --args="-c" \
+          --args="python -c \"import os; import base64; exec(base64.b64decode(os.environ['PYTHON_SCRIPT_B64']).decode('utf-8'))\"" \
+          --max-retries=0 \
+          --parallelism=1 \
+          --task-timeout=1200 \
+          --memory=2Gi
+        
+        # Execute the job
+        gcloud run jobs execute ${LANGGRAPH_JOB_NAME} \
+          --region=${{ env.CLOUD_SQL_REGION }} \
+          --project=${{ env.GCP_PROJECT_ID }} \
+          --wait || echo "LangGraph initialization failed"
+        
+        # Get the logs
+        echo "Fetching LangGraph initialization logs..."
+        gcloud logging read \
+          "resource.type=cloud_run_job AND resource.labels.job_name=${LANGGRAPH_JOB_NAME} AND resource.labels.location=${{ env.CLOUD_SQL_REGION }}" \
+          --project=${{ env.GCP_PROJECT_ID }} \
+          --limit=100 \
+          --format="table(timestamp, severity, textPayload)" \
+          --order=asc
+        
+    - name: Final Schema Verification
+      continue-on-error: true
+      run: |
+        echo "Running final schema verification after LangGraph initialization..."
+        
+        # Re-run the verification script to confirm tables were created
+        VERIFY_SCRIPT_B64=$(cat scripts/verify-schema.py | base64 -w 0)
+        SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-8)
+        FINAL_VERIFY_JOB_NAME="final-verify-dev-${SHORT_SHA}"
+        
+        # Delete old verification jobs including the current one
+        echo "Cleaning up old final verification jobs..."
+        for job in $(gcloud run jobs list --region=${{ env.CLOUD_SQL_REGION }} --project=${{ env.GCP_PROJECT_ID }} --format="value(name)" | grep "^final-verify-dev-" || true); do
+          echo "Deleting job: ${job}"
+          gcloud run jobs delete ${job} \
+            --region=${{ env.CLOUD_SQL_REGION }} \
+            --project=${{ env.GCP_PROJECT_ID }} \
+            --quiet || true
+        done
+        
+        # Also specifically delete the job we're about to create
+        gcloud run jobs delete ${FINAL_VERIFY_JOB_NAME} \
+          --region=${{ env.CLOUD_SQL_REGION }} \
+          --project=${{ env.GCP_PROJECT_ID }} \
+          --quiet || true
+        
+        # Create and execute the final verification job
+        SERVICE_ACCOUNT="${{ env.SERVICE_ACCOUNT_PREFIX }}@${{ env.GCP_PROJECT_ID }}.iam.gserviceaccount.com"
+        VPC_CONNECTOR="projects/${{ env.GCP_PROJECT_ID }}/locations/${{ env.CLOUD_SQL_REGION }}/connectors/${{ env.VPC_CONNECTOR_NAME }}"
+        
+        gcloud run jobs create ${FINAL_VERIFY_JOB_NAME} \
+          --image=python:3.12-slim \
+          --region=${{ env.CLOUD_SQL_REGION }} \
+          --project=${{ env.GCP_PROJECT_ID }} \
+          --service-account=${SERVICE_ACCOUNT} \
+          --set-env-vars="GCP_PROJECT_ID=${{ env.GCP_PROJECT_ID }}" \
+          --set-env-vars="WORKSPACE=${{ env.ENVIRONMENT }}" \
+          --set-env-vars="CLOUD_SQL_REGION=${{ env.CLOUD_SQL_REGION }}" \
+          --set-env-vars="PYTHON_SCRIPT_B64=${VERIFY_SCRIPT_B64}" \
+          --set-secrets="POSTGRES_PASSWORD=postgres-password-${{ env.ENVIRONMENT }}:latest" \
+          --vpc-connector=${VPC_CONNECTOR} \
+          --set-cloudsql-instances="${{ env.GCP_PROJECT_ID }}:${{ env.CLOUD_SQL_REGION }}:${{ env.CLOUD_SQL_INSTANCE }}" \
+          --command="sh" \
+          --args="-c" \
+          --args="python -m pip install asyncpg && python -c \"import os; import base64; exec(base64.b64decode(os.environ['PYTHON_SCRIPT_B64']).decode('utf-8'))\"" \
+          --max-retries=0 \
+          --parallelism=1 \
+          --task-timeout=120
+        
+        # Execute the job
+        gcloud run jobs execute ${FINAL_VERIFY_JOB_NAME} \
+          --region=${{ env.CLOUD_SQL_REGION }} \
+          --project=${{ env.GCP_PROJECT_ID }} \
+          --wait || echo "Final verification failed"
+        
+        # Get the logs
+        echo "Fetching final verification logs..."
+        gcloud logging read \
+          "resource.type=cloud_run_job AND resource.labels.job_name=${FINAL_VERIFY_JOB_NAME} AND resource.labels.location=${{ env.CLOUD_SQL_REGION }}" \
+          --project=${{ env.GCP_PROJECT_ID }} \
+          --limit=100 \
+          --format="table(timestamp, severity, textPayload)" \
+          --order=asc
+
+    - name: Summary
+      if: always()
+      run: |
+        echo "========================================="
+        echo "Cloud SQL Schema Initialization Summary"
+        echo "========================================="
+        echo "Environment: ${{ env.ENVIRONMENT }}"
+        echo "Project: ${{ env.GCP_PROJECT_ID }}"
+        echo "Instance: ${{ env.CLOUD_SQL_INSTANCE }}"
+        echo "Database: ${{ env.CLOUD_SQL_DATABASE }}"
+        echo "Schema: ${{ env.CHECKPOINT_SCHEMA }}"
+        echo "Job Name: ${{ env.JOB_NAME_WITH_ID }}"
+        echo "Service Account: ${{ env.SERVICE_ACCOUNT_PREFIX }}@${{ env.GCP_PROJECT_ID }}.iam.gserviceaccount.com"
+        echo "========================================="
+
+        if [ "${{ job.status }}" == "success" ]; then
+          echo "✅ Initialization completed successfully!"
+        else
+          echo "❌ Initialization failed. Check the logs above."
+        fi

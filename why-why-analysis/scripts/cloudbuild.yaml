@@ -1,0 +1,7 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', '$_IMAGE_TAG', '-f', 'Dockerfile.cloud-sql-init', '.']
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '$_IMAGE_TAG']
+substitutions:
+  _IMAGE_TAG: ${TAG_NAME}

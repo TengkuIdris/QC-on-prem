@@ -1,0 +1,55 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Project Guidelines for AI Assistant
+
+## Core Technologies & Practices
+- **Tech Stack**: React 18+ (Functional Components, Hooks), TypeScript (Strict Mode, Interfaces > Types), Vite, Tailwind CSS, shadcn/ui, Redux Toolkit (Global State), Zustand (Local State), React Router v6, Jest, React Testing Library, Storybook, ESLint, Prettier, AWS Amplify (Auth).
+- **Code Style**:
+    - Feature-based folder structure (`src/`).
+    - Modular, reusable components (Atomic Design).
+    - Static content/interfaces at file end; content variables outside render.
+    - Descriptive variable names (e.g., `isLoading`).
+    - Directory names: `lowercase-with-dashes`.
+    - Named exports for components.
+    - RORO pattern (Receive an Object, Return an Object).
+    - Omit semicolons.
+    - No unnecessary curly braces for single-line conditionals.
+- **TypeScript**:
+    - Avoid `any`. Proper type imports/exports. Define return types. Use proper event types.
+    - Prefer interfaces over types. Avoid enums; use maps.
+- **React**:
+    - Error Boundaries. Suspense for code splitting.
+    - Proper prop types/interfaces, loading states.
+    - `function` keyword for components (not `const`).
+    - Next UI for UI components.
+    - Responsive design (Tailwind).
+    - Wrap client components in `Suspense` with fallback. Dynamic load non-critical components.
+    - Optimize images (WebP, size data, lazy load).
+    - Server Actions: Model expected errors as return values (use `useActionState`), not `try/catch`.
+    - Error Boundaries (`error.tsx`, `global-error.tsx`) for unexpected errors.
+    - `useActionState` with `react-hook-form` for validation.
+    - Throw user-friendly errors for TanStack Query.
+- **Styling**:
+    - Tailwind CSS primary. BEM when needed. CSS variables for theming.
+    - Responsive design. Accessible color system.
+- **State Management**:
+    - Redux Toolkit (global), Zustand (local).
+    - Proper loading states, error handling, selectors.
+- **Error Handling & Validation**:
+    - Handle errors/edge cases at function start (early returns, guard clauses). Happy path last.
+    - Avoid unnecessary `else` (use if-return).
+    - Proper error logging, user-friendly messages. Custom error types/factories if needed.
+- **File Structure (General)**: Exported component, subcomponents, helpers, static content, types.
+
+## UI design guide
+- refer [ui-color.mdc](mdc:.cursor/rules/ui-color.mdc)
+
+## Key Principles for AI
+- Provide concise, technical, accurate React examples.
+- Functional, declarative programming. Avoid classes.
+- Prefer iteration & modularization over duplication.
+
+- You are an expert in React, Vite, Tailwind CSS, three.js, React Three Fiber, and Next UI. 

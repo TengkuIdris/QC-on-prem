@@ -1,0 +1,266 @@
+.node {
+  display: flex;
+  align-items: center;
+  /* margin-bottom: 10px ; */
+  padding-top: 5px;
+  padding-bottom: 5px;
+  padding-left: 10px;
+}
+.titleFTA {
+  text-align: center;
+}
+
+.label {
+  font-weight: bold;
+  margin-right: 15px;
+  padding: 10px;
+  border: 1px solid #000;
+  border-radius: 5px;
+  text-align: center;
+  min-width: 90px;
+  max-width: 400px;
+  word-wrap: break-word;
+}
+
+.childrenContainer {
+  margin-left: 24px;
+  padding-left: 0;
+  position: relative;
+}
+
+/* .childrenContainer::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -12px;
+  width: 2px;
+  height: 100%;
+  background-color: #e5e8ec;
+}
+
+.childrenContainer:not(:empty)::before {
+  display: block;
+} */
+
+.input {
+  font-size: 14px;
+  padding: 5px;
+  margin-right: 10px;
+  width: 250px !important;
+}
+.iconAdd {
+  background-color: green !important;
+  color: white !important;
+}
+.iconRemove {
+  background-color: red !important;
+  color: white !important;
+}
+.iconEdit {
+  background-color: #4472c4 !important;
+  color: white !important;
+}
+.iconComment {
+  background-color: #8b52b4 !important;
+  color: white !important;
+}
+.buttonGroup {
+  display: flex;
+  button {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    padding: unset !important;
+    width: 42px !important;
+    height: 42px !important;
+    margin-right: 7px;
+  }
+}
+
+.buttonSubmited {
+  width: 150px;
+}
+.searchBox {
+  display: flex;
+  justify-content: space-between;
+}
+.boxCss {
+  transition: box-shadow 300ms cubic-bezier(0.4, 0, 0.2, 1) 0ms;
+  border-radius: 4px;
+  box-shadow: 0px 3px 3px -2px rgba(0, 0, 0, 0.2),
+    0px 3px 4px 0px rgba(0, 0, 0, 0.14), 0px 1px 8px 0px rgba(0, 0, 0, 0.12);
+  padding: 10px;
+}
+.inputSearch {
+  width: 70% !important;
+
+  ::placeholder {
+    text-align: center !important;
+  }
+
+  /* or, for legacy browsers */
+
+  ::-webkit-input-placeholder {
+    text-align: center !important;
+  }
+
+  :-moz-placeholder {
+    /* Firefox 18- */
+    text-align: center !important;
+  }
+
+  ::-moz-placeholder {
+    /* Firefox 19+ */
+    text-align: center !important;
+  }
+
+  :-ms-input-placeholder {
+    text-align: center !important;
+  }
+}
+
+.nodeContainer {
+  position: relative;
+  padding-left: 0;
+}
+
+/* .nodeContainer.hasParent::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0px;
+  width: 2px;
+  height: 50%;
+  background-color: #e5e8ec;
+}
+
+.nodeContainer.hasParent::after {
+  content: "";
+  position: absolute;
+  top: calc(50% - 1px);
+  left: 0px;
+  width: 12px;
+  height: 2px;
+  background-color: #e5e8ec;
+}
+
+.nodeContainer.hasParent:last-child::before {
+  height: 50%;
+} */
+
+.nodeCard {
+  position: relative;
+  background: #f6f9ff;
+  border: 2px solid #e5e8ec;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  min-height: 48px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  cursor: default;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+
+}
+
+.nodeCard.editing {
+  border-color: #4472c4;
+}
+
+.nodeLabel {
+  flex-grow: 1;
+  margin-right: 10px;
+  word-break: break-all;
+}
+
+.nodeLabelFixed {
+  font-size: 15px;
+  color: #5f6d7e;
+  margin-bottom: 2px;
+  line-height: 1.2;
+  font-weight: 500;
+}
+
+.nodeRow {
+  height: 42px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.nodeContent {
+  font-size: 20px;
+  font-weight: 500;
+  color: #374151;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  cursor: text;
+  user-select: text;
+}
+
+.inputField {
+  width: 100%;
+  cursor: text !important;
+  pointer-events: auto;
+  font-size: 20px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.errorText {
+  color: red;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background-color: #f9f9f9;
+  padding: 4px;
+  border-radius: 4px;
+}
+
+.actionButton {
+  background-color: transparent;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.actionButton:hover {
+  background-color: #eee;
+}
+
+.aiActionButton {
+  background-color: #8b52b4 !important; /* 紫色 */
+  color: white !important;
+  border-color: #8b52b4 !important; /* ボーダー色も合わせる */
+}
+
+.aiActionButton:hover {
+  background-color: #7a48a2 !important; /* ホバー時の色を少し暗くする */
+}
+
+.selected {
+  border-radius: 8px !important;
+  box-shadow: 0 0 8px 2px #90caf9;
+  background: #e3f0ff !important;
+  z-index: 2;
+}
+
+.childOfSelected {
+  background: #f0f7ff !important; /* Even lighter blue */
+  border: none !important;
+}
