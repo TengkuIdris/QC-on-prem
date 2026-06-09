@@ -373,8 +373,7 @@ export class AiService {
         headers: {
           "Content-Type": "application/json",
           "x-api-key": apiKey,
-          Accept:
-            "                                                                                                                                                                                                                                                                                                                                                                                                             text/event-stream",
+          Accept: "text/event-stream",
         },
         body: JSON.stringify({
           user_message: message,
